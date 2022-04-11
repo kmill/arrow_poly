@@ -132,11 +132,19 @@ instance : Coe Int Poly where
 instance : OfNat Poly n where
   ofNat := (n : Int)
 
-def a : Poly := Monomial.mk #[1, 2] 2
-def b : Poly := Monomial.mk #[3] 3
+def Poly.toList (p : Poly) : List (Int × List Int) := Id.run do
+  let mut q := []
+  for m in p.terms do
+    q := q.concat (m.coeff, m.exponents.toList)
+  return q
 
-#eval (a * b + b) - ((a + 1) * b)
-#eval (a * b + a) - (a * (b + 1))
+def Poly.fromList (terms : List (Int × List Int)) : Poly := Id.run do
+  let mut p := Poly.zero
+  for (c, exp) in terms do
+    let m : Monomial := { coeff := 1, exponents := exp.toArray.popZeros,
+                          exp_norm := Array.back?_popZeros _ }
+    p := p + c * m
+  return p
 
 def Poly.A (exp : Int := 1) : Poly :=
   if he : exp = 0 then Monomial.incl 1
@@ -147,9 +155,16 @@ def Poly.K (i : Nat) (exp : Nat := 1) : Poly :=
   if he : exp = 0 then Monomial.incl 1
   else {coeff := 1, exponents := (Array.mkArray (i+1) 0).push exp : Monomial }
 
+/-
+def a : Poly := Monomial.mk #[1, 2] 2
+def b : Poly := Monomial.mk #[3] 3
+
+#eval (a * b + b) - ((a + 1) * b)
+#eval (a * b + a) - (a * (b + 1))
+
 #eval Poly.A (-1) * (Poly.K 1 + Poly.K 2) * (Poly.K 1 + Poly.K 2) * Poly.A
 
-#eval (1 + Poly.A) ^ 6
+#eval Poly.toList ((1 + Poly.A) ^ 6)
 
 #eval (1 : Poly) + 1
 #eval 1 + Poly.A - 1
@@ -159,4 +174,5 @@ deriving instance Repr for Ordering
 
 #eval compare #[1] #[1,0]
 #eval Poly.A
-#eval Poly.A + Poly.A
+#eval Poly.fromList (Poly.A + Poly.A + Poly.K 1).toList
+-/
