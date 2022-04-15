@@ -1,4 +1,7 @@
 import ArrowPoly.ArrowPoly
 
-def main : IO Unit :=
-  IO.println s!"Hello, {hello}!"
+def main : List String → IO Unit
+| [fname] =>
+  IO.println s!"loading {fname}"
+| _ =>
+  throw <| IO.userError "Expecting exactly one argument"

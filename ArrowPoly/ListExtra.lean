@@ -72,3 +72,7 @@ by
       apply concat
       apply ih
       simp
+
+def List.count [DecidableEq α] : List α → α → Nat
+| [], a => 0
+| x :: xs, a => (if x == a then 1 else 0) + xs.count a
