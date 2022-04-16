@@ -1,4 +1,4 @@
-import ArrowPoly.ListExtra
+import ArrowPoly.Extra.ListExtra
 
 inductive Node (α : Type _)
 | Xp (a b c d : α)

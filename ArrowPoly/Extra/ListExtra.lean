@@ -1,4 +1,4 @@
-import ArrowPoly.NatExtra
+import ArrowPoly.Extra.NatExtra
 
 theorem List.concat_cons (x : α) (xs : List α) (y : α) :
   (x :: xs).concat y = x :: xs.concat y := rfl

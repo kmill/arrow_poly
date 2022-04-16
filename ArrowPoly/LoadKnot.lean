@@ -1,5 +1,5 @@
 import ArrowPoly.Knot
-import ArrowPoly.ArrayExtra
+import ArrowPoly.Extra.ArrayExtra
 import Lean.Data.Parsec
 import Std.Data.AssocList
 

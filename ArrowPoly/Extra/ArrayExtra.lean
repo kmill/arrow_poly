@@ -1,6 +1,6 @@
-import ArrowPoly.NatExtra
-import ArrowPoly.ListExtra
-import ArrowPoly.LogicExtra
+import ArrowPoly.Extra.NatExtra
+import ArrowPoly.Extra.ListExtra
+import ArrowPoly.Extra.LogicExtra
 
 theorem Array.back_eq_of_back?_eq [Inhabited α] {a : Array α} (h : a.back? = some x) :
   a.back = x :=

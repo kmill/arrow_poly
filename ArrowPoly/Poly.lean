@@ -1,5 +1,5 @@
-import ArrowPoly.ArrayExtra
-import ArrowPoly.IntExtra
+import ArrowPoly.Extra.ArrayExtra
+import ArrowPoly.Extra.IntExtra
 
 attribute [local instance] Array.lexicographic
 

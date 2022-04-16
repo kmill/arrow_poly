@@ -1,4 +1,4 @@
-import ArrowPoly.LogicExtra
+import ArrowPoly.Extra.LogicExtra
 
 @[simp] theorem Nat.succ_lt_succ_iff (m n : Nat) : m.succ < n.succ ↔ m < n :=
 ⟨Nat.lt_of_succ_lt_succ, Nat.succ_lt_succ⟩

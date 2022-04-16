@@ -1,5 +1,5 @@
 import ArrowPoly.Knot
-import ArrowPoly.ArrayExtra
+import ArrowPoly.Extra.ArrayExtra
 
 /-- "arrow Temperley-Lieb path" -/
 structure ATLP where
