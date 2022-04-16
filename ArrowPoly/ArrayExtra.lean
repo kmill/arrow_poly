@@ -301,3 +301,7 @@ else
 termination_by _ => as.size
 
 end ind
+
+def Array.enumerate (as : Array α) : Array (Nat × α) :=
+(as.foldl (λ (acc : Nat × Array (Nat × α)) a =>
+  (acc.1 + 1, acc.2.push (acc.1, a))) (0, #[])).2

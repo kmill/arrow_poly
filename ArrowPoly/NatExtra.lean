@@ -1,3 +1,5 @@
+import ArrowPoly.LogicExtra
+
 @[simp] theorem Nat.succ_lt_succ_iff (m n : Nat) : m.succ < n.succ ↔ m < n :=
 ⟨Nat.lt_of_succ_lt_succ, Nat.succ_lt_succ⟩
 
@@ -24,3 +26,18 @@ Nat.le_antisymm (Nat.le_of_lt_succ h) (Nat.ge_of_not_lt hn)
   simp [Nat.not_lt_zero]
   intro h
   cases h
+
+protected theorem Nat.not_lt {n m : Nat} : ¬ n < m ↔ m ≤ n where
+  mp := by
+    intro h
+    have := Nat.lt_or_ge n m
+    simp [h] at this
+    exact this
+  mpr := by
+    intros h h'
+    have := Nat.lt_of_le_of_lt h h'
+    simp at this
+
+protected theorem Nat.not_le {n m : Nat} : ¬ n ≤ m ↔ m < n := by
+  rw [← Nat.not_lt]
+  simp [not_not]
