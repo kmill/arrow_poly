@@ -27,6 +27,24 @@ def Node.ids : Node α → List α
 | .Xm a b c d => [a, b, c, d]
 | .P a b => [a, b]
 
+def Node.writhe : Node α → Int
+| .Xp _ _ _ _ => 1
+| .Xm _ _ _ _ => -1
+| .P _ _ => 0
+
+local infixl:50 " ^^ " => Nat.max
+
+def Node.max_id : Node Nat → Nat
+| .Xp a b c d => a ^^ b ^^ c ^^ d
+| .Xm a b c d => a ^^ b ^^ c ^^ d
+| .P a b => a ^^ b
+
+instance [ToString α] : ToString (Node α) where
+  toString
+  | .Xp a b c d => s!"Xp[{a},{b},{c},{d}]"
+  | .Xm a b c d => s!"Xm[{a},{b},{c},{d}]"
+  | .P a b => s!"P[{a},{b}]"
+
 /-- Planar diagram
 
 Each index should appear at most twice. -/
@@ -44,5 +62,12 @@ def PD.crossings [Inhabited α] (pd : PD α) : Nat := Id.run do
     | .P _ _ => pure ()
   return c
 
+def PD.writhe (pd : PD α) : Int := pd.foldl (λ w node => w + node.writhe) 0
+
+def PD.max_id (pd : PD Nat) : Nat := pd.foldl (λ w node => w ^^ node.max_id) 0
+
 instance [Repr α] : Repr (PD α) where
   reprPrec pd := reprPrec (id pd : Array (Node α))
+
+instance [ToString α] : ToString (PD α) where
+  toString pd := "PD[" ++ ", ".intercalate (pd.map toString).toList ++ "]"

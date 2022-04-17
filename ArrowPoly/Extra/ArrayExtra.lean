@@ -197,6 +197,18 @@ by
   rename_i h
   exact (Nat.not_lt_zero _ h).elim
 
+theorem Array.strictIncreasing_singleton (x : α) : #[x].strictIncreasing :=
+by
+  intros i j hij
+  cases i with | mk i hi =>
+  cases j with | mk j hj =>
+  have hi : i < 1 := hi
+  have hj : j < 1 := hj
+  simp at hi hj
+  subst i j
+  have : 0 < 0 := hij
+  simp at this
+
 theorem Array.strictIncreasing_push (as : Array α) (a : α) :
   (as.push a).strictIncreasing ↔ as.strictIncreasing ∧ as.allTrue (· < a) where
   mp := by
@@ -305,3 +317,44 @@ end ind
 def Array.enumerate (as : Array α) : Array (Nat × α) :=
 (as.foldl (λ (acc : Nat × Array (Nat × α)) a =>
   (acc.1 + 1, acc.2.push (acc.1, a))) (0, #[])).2
+
+@[specialize] private partial def Array.binInsertAux'
+    {α : Type u} {m : Type u → Type v} [Monad m] [Inhabited α]
+    (lt : α → α → Bool)
+    (merge : α → m (Option α))
+    (add : Unit → m α)
+    (as : Array α)
+    (k : α) : Nat → Nat → m (Array α)
+  | lo, hi =>
+    -- as[lo] < k < as[hi]
+    let mid    := (lo + hi)/2
+    let midVal := as.get! mid
+    if lt midVal k then
+      if mid == lo then do let v ← add (); pure <| as.insertAt (lo+1) v
+      else binInsertAux' lt merge add as k mid hi
+    else if lt k midVal then
+      binInsertAux' lt merge add as k lo mid
+    else do
+      match ← merge (as.get! mid) with
+      | none => return as.eraseIdx mid
+      | some v => return as.set! mid v
+
+-- version to have merge that is able to delete
+@[specialize] def Array.binInsertM' {α : Type u} {m : Type u → Type v} [Monad m] [Inhabited α]
+    (lt : α → α → Bool)
+    (merge : α → m (Option α))
+    (add : Unit → m α)
+    (as : Array α)
+    (k : α) : m (Array α) :=
+  if as.isEmpty then do let v ← add (); pure <| as.push v
+  else if lt k (as.get! 0) then do let v ← add (); pure <| as.insertAt 0 v
+  else if !lt (as.get! 0) k then do
+    match ← merge (as.get! 0) with
+    | none => return as.eraseIdx 0
+    | some k' => return as.set! 0 k'
+  else if lt as.back k then do let v ← add (); pure <| as.push v
+  else if !lt k as.back then do
+    match ← merge as.back with
+    | none => return as.pop
+    | some k' => return as.set! (as.size - 1) k'
+  else Array.binInsertAux' lt merge add as k 0 (as.size - 1)

@@ -12,10 +12,33 @@ structure Monomial where
   exp_norm : exponents.back? ≠ some 0 := by simp [*]
   deriving Repr
 
+instance : DecidableEq Monomial :=
+λ m1 m2 =>
+  if h : m1.coeff = m2.coeff ∧ m1.exponents = m2.exponents then
+    isTrue (by { cases m1; cases m2; simp [h.1, h.2] })
+  else
+    isFalse (by { intro h; cases h; simp at h })
+
+/-- compact Mathematica-compatible representation -/
+instance : ToString Monomial where
+  toString m :=
+    toString m.coeff ++ "*M[" ++ ",".intercalate (m.exponents.map toString).toList ++ "]"
+
 structure Poly where
   terms : Array Monomial
   incr : (terms.map Monomial.exponents).strictIncreasing
   deriving Repr
+
+instance : DecidableEq Poly :=
+λ p1 p2 =>
+  if h : p1.terms = p2.terms then
+    isTrue (by { cases p1; cases p2; cases h; simp })
+  else
+    isFalse (by { intro h; cases h; simp at h })
+
+/-- compact Mathematica-compatible representation -/
+instance : ToString Poly where
+  toString p := "Poly[" ++ ", ".intercalate (p.terms.map toString).toList ++ "]"
 
 def Poly.zero : Poly where
   terms := #[]
@@ -132,6 +155,8 @@ instance : Coe Int Poly where
 instance : OfNat Poly n where
   ofNat := (n : Int)
 
+def Poly.one_ne_zero : (1 : Poly) ≠ (0 : Poly) := by simp
+
 def Poly.toList (p : Poly) : List (Int × List Int) := Id.run do
   let mut q := []
   for m in p.terms do
@@ -179,3 +204,5 @@ deriving instance Repr for Ordering
 #eval Poly.A
 #eval Poly.fromList (Poly.A + Poly.A + Poly.K 1).toList
 -/
+
+-- #eval toString <| Poly.A (-1) * (Poly.K 1 + Poly.K 2) * (Poly.K 1 + Poly.K 2) * Poly.A
