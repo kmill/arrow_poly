@@ -71,3 +71,15 @@ instance [Repr α] : Repr (PD α) where
 
 instance [ToString α] : ToString (PD α) where
   toString pd := "PD[" ++ ", ".intercalate (pd.map toString).toList ++ "]"
+
+def PD.writhe_normalize (pd : PD Nat) : PD Nat := Id.run do
+  let mut pd := pd
+  let mut i := pd.max_id
+  let wr := pd.writhe
+  for j in [0 : wr.natAbs] do
+    if wr > 0 then
+      pd := pd.push <| .Xm i (i+1) (i+1) (i+2)
+    else
+      pd := pd.push <| .Xp (i+1) (i+1) (i+2) i
+    i := i + 2
+  return pd

@@ -9,7 +9,10 @@ def main : List String → IO Unit
   for (name, pd) in knots do
     IO.println s!"---\ncalculating for {name}"
     IO.println s!"{pd}"
-    let p := arrow_poly pd
+    IO.println s!"writhe = {pd.writhe}"
+    let pd' := pd.writhe_normalize
+    IO.println s!"{pd'}"
+    let p := arrow_poly pd'
     IO.println s!"{p}"
 | _ =>
   throw <| IO.userError "Expecting exactly one argument"
