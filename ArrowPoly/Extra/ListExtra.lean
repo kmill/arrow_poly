@@ -76,3 +76,7 @@ by
 def List.count [DecidableEq α] : List α → α → Nat
 | [], a => 0
 | x :: xs, a => (if x == a then 1 else 0) + xs.count a
+
+inductive List.nodup : List α → Prop
+| nil : nodup []
+| cons (x : α) (xs : List α) (h : ¬ x ∈ xs) : nodup (x :: xs)

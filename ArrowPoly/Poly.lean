@@ -146,14 +146,17 @@ def Poly.fromList (terms : List (Int × List Int)) : Poly := Id.run do
     p := p + c * m
   return p
 
+@[inline]
 def Poly.A (exp : Int := 1) : Poly :=
   if he : exp = 0 then Monomial.incl 1
   else { coeff := 1, exponents := #[exp],
          exp_norm := by { show some exp ≠ some 0; simp [he] } : Monomial }
 
+@[inline]
 def Poly.K (i : Nat) (exp : Nat := 1) : Poly :=
   if he : exp = 0 then Monomial.incl 1
-  else {coeff := 1, exponents := (Array.mkArray (i+1) 0).push exp : Monomial }
+  else if hi : i = 0 then Monomial.incl 1
+  else {coeff := 1, exponents := (Array.mkArray i 0).push exp : Monomial }
 
 /-
 def a : Poly := Monomial.mk #[1, 2] 2
