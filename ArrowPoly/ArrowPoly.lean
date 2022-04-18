@@ -167,6 +167,8 @@ def ATL.one : ATL where
   diagrams := #[ATLD.one]
   ordered := Array.strictIncreasing_singleton _
 
+instance : Inhabited ATL := ⟨ATL.one⟩
+
 def ATL.add (x y : ATL) : ATL :=
   let f (p : Array ATLD) : Merge ATLD → Array ATLD
     | .left m₁ => p.push m₁
@@ -226,6 +228,8 @@ instance : HMul Poly ATL ATL where
 instance : Coe ATLD ATL where
   coe d := { diagrams := #[d], ordered := Array.strictIncreasing_singleton _ }
 
+/-! ## PD nodes as ATL elements -/
+
 def ATL.P (i j : Nat) (whiskers : Int := 0) : ATL := ATLP.mk' i j whiskers
 
 def ATL.Xp (i j k l : Nat) : ATL :=
@@ -236,6 +240,141 @@ def ATL.Xm (i j k l : Nat) : ATL :=
   ATLD.ofArray #[ATLP.mk' j k 0, ATLP.mk' i l 0] (Poly.A (-1))
   + ATLD.ofArray #[ATLP.mk' j i 1, ATLP.mk' k l 1] (Poly.A 1)
 
+/-! ## Relabeling -/
+
+def ATLP.relabel (f : Nat → Nat) (p : ATLP) : ATLP :=
+  ATLP.mk' (f p.fst) (f p.snd) p.whiskers
+
+def ATLD.relabel (f : Nat → Nat) (d : ATLD) : ATLD :=
+  ATLD.ofArray (d.paths.map (ATLP.relabel f)) d.coeff
+
+def ATL.relabel (f : Nat → Nat) (a : ATL) : ATL :=
+  a.diagrams.foldl (λ b d => b + d.relabel f) ATL.zero
+
+/-! ## Converting PD's to ATL's and computing the arrow polynomial -/
+
+def Node.toATL : Node Nat → ATL
+| .Xp a b c d => ATL.Xp a b c d
+| .Xm a b c d => ATL.Xm a b c d
+| .P a b => ATL.P a b
+
+/-- Convert a `PD` to an `ATL` using the arrow polynomial skein relation. -/
+def PD.toATL (pd : PD Nat) : ATL :=
+  pd.foldl (λ a node => a * node.toATL) ATL.one
+
+/-- Numbers indices such that, with respect to orientation of an arc, are
+  in this order:
+
+  ^ ^ ^ ^
+  | | | |
+  | | | |
+  0 1 2 3
+
+  The boundary ends up using `4 * n` indices. While this uses internal indices,
+  the intent is that this be converted to an `ATL` so that they disappear and
+  only the boundary indices remain.
+
+ -/
+def PD.cabled_Xp (n : Nat) : PD Nat := Id.run do
+  let mut pd : PD Nat := #[]
+  for i in [0 : n] do
+    for j in [0 : n] do
+      let a := if i + 1 = n then j else 4*n+n*(n-2) - n*i + j
+      let b := if j + 1 = n then n + i else 4*n+n*(n-1) + n*j + i
+      let c := if i = 0 then 2*n + j else 4*n+n*(n-2) - n*(i-1) + j
+      let d := if j = 0 then 3*n + i else 4*n+n*(n-1) + n*(j-1) + i
+      pd := pd.push <| Node.Xp a b c d
+  return pd
+
+/-- Same convention as for `PD.cabled_Xp` -/
+def PD.cabled_Xm (n : Nat) : PD Nat := Id.run do
+  let mut pd : PD Nat := #[]
+  for i in [0 : n] do
+    for j in [0 : n] do
+      let a := if j = 0 then i else 4*n + i + n*(j-1)
+      let b := if i + 1 = n then n + j else 4*n+n*(2*n-3) - n*i + j
+      let c := if j + 1 = n then 2*n + i else 4*n + i + n*j
+      let d := if i = 0 then 3*n + j else 4*n+n*(2*n-3) - n*(i-1) + j
+      pd := pd.push <| Node.Xm a b c d
+  return pd
+
+def PD.cabled_P (n : Nat) : PD Nat := Id.run do
+  let mut pd : PD Nat := #[]
+  for i in [0 : n] do
+    pd := pd.push <| Node.P i (n + i)
+  return pd
+
+--#eval toString <| PD.cabled_Xp 3
+--#eval toString <| PD.cabled_Xm 3
+--#eval toString <| PD.cabled_P 3
+
+def ATL.cabled_Xp (n : Nat) : ATL := (PD.cabled_Xp n).toATL
+
+def ATL.cabled_Xm (n : Nat) : ATL := (PD.cabled_Xm n).toATL
+
+--#eval toString <| ATL.cabled_Xp 2
+--#eval (ATL.cabled_Xp 4).diagrams.size -- 1252
+
+structure ATLCache where
+  cached_xp : Array ATL
+  cached_xm : Array ATL
+deriving Repr
+
+def ATLCache.empty : ATLCache where
+  cached_xp := #[]
+  cached_xm := #[]
+
+def ATLCache.ensure_xp (cache : ATLCache) (n : Nat) : ATLCache := Id.run do
+  let mut cache := cache
+  for n' in [cache.cached_xp.size : n + 1] do
+    cache := { cache with cached_xp := cache.cached_xp.push (ATL.cabled_Xp n') }
+  return cache
+
+/--
+Create cabled positive crossing using indices.
+
+The indices are all multiplied by `4 * n` to make space for all the intermediate indices.
+-/
+def ATLCache.Xp (cache : ATLCache) (n : Nat) (a b c d : Nat) : ATLCache × ATL :=
+  let cache := cache.ensure_xp n
+  let x := cache.cached_xp[n].relabel <| λ i =>
+    if i < n then n*a + i
+    else if i < 2*n then n*b + i - n
+    else if i < 3*n then n*c + i - 2*n
+    else n*d + i - 3*n
+  (cache, x)
+
+def ATLCache.ensure_xm (cache : ATLCache) (n : Nat) : ATLCache := Id.run do
+  let mut cache := cache
+  for n' in [cache.cached_xm.size : n + 1] do
+    cache := { cache with cached_xm := cache.cached_xm.push (ATL.cabled_Xm n') }
+  return cache
+
+def ATLCache.Xm (cache : ATLCache) (n : Nat) (a b c d : Nat) : ATLCache × ATL :=
+  let cache := cache.ensure_xm n
+  let x := cache.cached_xm[n].relabel <| λ i =>
+    if i < n then n*a + i
+    else if i < 2*n then n*b + i - n
+    else if i < 3*n then n*c + i - 2*n
+    else n*d + i - 3*n
+  (cache, x)
+
+def ATL.cabled_P (n : Nat) (a b : Nat) : ATL := Id.run do
+  let mut x : ATL := ATL.one
+  for i in [0 : n] do
+    x := x * ATLP.mk' (n*a + i) (n*b + i) 0
+  return x
+
+def ATLCache.ofNode (cache : ATLCache) (n : Nat) : Node Nat → ATLCache × ATL
+| .Xp a b c d => cache.Xp n a b c d
+| .Xm a b c d => cache.Xm n a b c d
+| .P a b => (cache, ATL.cabled_P n a b)
+
+--#eval toString <| (ATLCache.empty.Xm 2 10 20 30 40).2
+
+/--  -/
+--def ATLD.finalize (d : ATLD) : Poly 
+
 def ATL.finalize (a : ATL) : Poly := Id.run do
   let mut p : Poly := 0
   for d in a.diagrams do
@@ -245,15 +384,25 @@ def ATL.finalize (a : ATL) : Poly := Id.run do
       panic! "ATL.finalize: internal error"
   return p
 
-def arrow_poly (p : PD Nat) : Poly := Id.run do
+def arrow_poly (p : PD Nat) : Poly :=
+  p.toATL.finalize
+
+def ATLCache.cabled_arrow_poly (cache : ATLCache) (n : Nat) (pd : PD Nat) (bdry : Nat × Nat) :
+  ATLCache × Poly := Id.run
+do
+  let mut cache := cache
   let mut a : ATL := ATL.one
-  for node in (id p : Array _) do
-    let a' := match node with
-              | .Xp a b c d => ATL.Xp a b c d
-              | .Xm a b c d => ATL.Xm a b c d
-              | .P a b => ATL.P a b
-    a := a * a'
-  return a.finalize
+  -- Connect all but one back up
+  for i in [1 : n] do
+    a := a * ATLP.mk' (n*bdry.2 + i) (n*bdry.1 + i) 0
+  -- Process nodes
+  for node in (id pd : Array _) do
+    let (cache', node') := cache.ofNode n node
+    cache := cache'
+    a := a * node'
+  return (cache, a.finalize)
+
+--#eval ATLCache.empty.cabled_arrow_poly
 
 /-
 #eval toString <| (2 : Poly) * ATL.one * ATL.one * (ATLP.mk' 1 2 0 : ATL) * (ATLP.mk' 1 2 0 : ATL)

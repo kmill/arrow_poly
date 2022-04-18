@@ -10,7 +10,7 @@ structure Monomial where
   coeff : Int
   coeff_nonzero : coeff ≠ 0 := by simp [*]
   exp_norm : exponents.back? ≠ some 0 := by simp [*]
-  deriving Repr
+  deriving Repr, Ord
 
 instance : DecidableEq Monomial :=
 λ m1 m2 =>
@@ -24,10 +24,12 @@ instance : ToString Monomial where
   toString m :=
     toString m.coeff ++ "*M[" ++ ",".intercalate (m.exponents.map toString).toList ++ "]"
 
+instance : Inhabited Monomial := ⟨{ exponents := #[], coeff := 1 }⟩
+
 structure Poly where
   terms : Array Monomial
   incr : (terms.map Monomial.exponents).strictIncreasing
-  deriving Repr
+  deriving Repr, Ord
 
 instance : DecidableEq Poly :=
 λ p1 p2 =>
@@ -43,6 +45,8 @@ instance : ToString Poly where
 def Poly.zero : Poly where
   terms := #[]
   incr := by intros i; cases i.isLt
+
+instance : Inhabited Poly := ⟨Poly.zero⟩
 
 def Monomial.incl (n : Int) (hn : n ≠ 0 := by simp) : Monomial where
   coeff := n
@@ -182,6 +186,28 @@ def Poly.K (i : Nat) (exp : Nat := 1) : Poly :=
   if he : exp = 0 then Monomial.incl 1
   else if hi : i = 0 then Monomial.incl 1
   else {coeff := 1, exponents := (Array.mkArray i 0).push exp : Monomial }
+
+/-- Negate the exponent of the "A" variable. -/
+def Monomial.mirror (m : Monomial) : Monomial where
+  coeff := m.coeff
+  exponents :=
+    if m.exponents.isEmpty then
+      m.exponents
+    else
+      m.exponents.set! 0 (-m.exponents[0])
+  coeff_nonzero := m.coeff_nonzero
+  exp_norm := by
+    split
+    · rename_i h
+      rw [Array.eq_empty_of_isEmpty h]
+      simp
+    · have := m.exp_norm
+      sorry
+
+/-- Negate the exponent of the "A" variable. Corresponds to taking the mirror image of
+the knot. -/
+def Poly.mirror (p : Poly) : Poly :=
+  p.terms.foldl (λ q term => q + term.mirror) 0
 
 /-
 def a : Poly := Monomial.mk #[1, 2] 2

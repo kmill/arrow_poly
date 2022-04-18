@@ -72,9 +72,11 @@ instance [Repr α] : Repr (PD α) where
 instance [ToString α] : ToString (PD α) where
   toString pd := "PD[" ++ ", ".intercalate (pd.map toString).toList ++ "]"
 
-def PD.writhe_normalize (pd : PD Nat) : PD Nat := Id.run do
+/-- Create a PD with zero writhe. The `bdry` is the `(low, high)` pair where
+adding in a `P high low` completes the knot. -/
+def PD.writhe_normalize (pd : PD Nat) (bdry : Nat × Nat) : PD Nat × Nat × Nat := Id.run do
   let mut pd := pd
-  let mut i := pd.max_id
+  let mut i := bdry.2 -- high
   let wr := pd.writhe
   for j in [0 : wr.natAbs] do
     if wr > 0 then
@@ -82,4 +84,4 @@ def PD.writhe_normalize (pd : PD Nat) : PD Nat := Id.run do
     else
       pd := pd.push <| .Xp (i+1) (i+1) (i+2) i
     i := i + 2
-  return pd
+  return (pd, bdry.1, i)
