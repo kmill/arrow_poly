@@ -52,6 +52,8 @@ def PD α := Array (Node α)
 
 def PD.is_valid [DecidableEq α] (pd : PD α) : Prop := ∀ x, pd.toList.count x ≤ 2
 
+instance : Inhabited (PD α) := ⟨#[]⟩
+
 /-- Give the number of crossings in the diagram. -/
 def PD.crossings [Inhabited α] (pd : PD α) : Nat := Id.run do
   let mut c := 0

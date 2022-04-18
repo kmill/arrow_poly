@@ -144,6 +144,7 @@ def ATLD.ofArray (paths : Array ATLP) (q : Poly := 1) : ATLD := Id.run do
            ordered := sorry,
            nodup := sorry }
 
+@[inline]
 def ATLD.scale (d : ATLD) (q : Poly) (hq : q ≠ 0) : ATLD where
   coeff := d.coeff * q
   paths := d.paths
@@ -159,10 +160,12 @@ deriving Repr
 instance : ToString ATL where
   toString a := "ATL[" ++ ", ".intercalate (a.diagrams.map toString).toList ++ "]"
 
+@[inline]
 def ATL.zero : ATL where
   diagrams := #[]
   ordered := Array.strictIncreasing_empty
 
+@[inline]
 def ATL.one : ATL where
   diagrams := #[ATLD.one]
   ordered := Array.strictIncreasing_singleton _

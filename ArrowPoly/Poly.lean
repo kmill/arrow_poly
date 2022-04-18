@@ -42,16 +42,19 @@ instance : DecidableEq Poly :=
 instance : ToString Poly where
   toString p := "Poly[" ++ ", ".intercalate (p.terms.map toString).toList ++ "]"
 
+@[inline]
 def Poly.zero : Poly where
   terms := #[]
   incr := by intros i; cases i.isLt
 
 instance : Inhabited Poly := ⟨Poly.zero⟩
 
+@[inline]
 def Monomial.incl (n : Int) (hn : n ≠ 0 := by simp) : Monomial where
   coeff := n
   exponents := #[]
 
+@[inline]
 def Monomial.scale (m : Monomial) (n : Int) (hn : n ≠ 0) : Monomial where
   coeff := n * m.coeff
   exponents := m.exponents
@@ -62,6 +65,7 @@ def Monomial.scale (m : Monomial) (n : Int) (hn : n ≠ 0) : Monomial where
     apply m.coeff_nonzero; assumption
   exp_norm := m.exp_norm
 
+@[inline]
 def Monomial.mul (m₁ m₂ : Monomial) : Monomial where
   coeff := m₁.coeff * m₂.coeff
   exponents := (Array.zipWith' m₁.exponents m₂.exponents (. + .)).popZeros

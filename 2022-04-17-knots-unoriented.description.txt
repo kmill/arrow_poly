@@ -1,0 +1,6 @@
+Did 0-5 crossings, arrow polynomials up to third cabling
+
+./build/bin/arrow_poly data/knots-6.txt  334688.18s user 2155.29s system 1165% cpu 8:01:37.51 total
+
+(used 12 threads, implementation didn't do anything special with
+planning composition beyond pre-computing cabled crossings)
