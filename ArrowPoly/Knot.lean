@@ -1,4 +1,5 @@
 import ArrowPoly.Extra.ListExtra
+import ArrowPoly.Extra.ArrayExtra
 
 inductive Node (α : Type _)
 | Xp (a b c d : α)
@@ -75,7 +76,8 @@ instance [ToString α] : ToString (PD α) where
   toString pd := "PD[" ++ ", ".intercalate (pd.map toString).toList ++ "]"
 
 /-- Create a PD with zero writhe. The `bdry` is the `(low, high)` pair where
-adding in a `P high low` completes the knot. -/
+adding in a `P high low` completes the knot.
+Assumes that `bdry.2 = pd.max_id`. -/
 def PD.writhe_normalize (pd : PD Nat) (bdry : Nat × Nat) : PD Nat × Nat × Nat := Id.run do
   let mut pd := pd
   let mut i := bdry.2 -- high
@@ -87,3 +89,35 @@ def PD.writhe_normalize (pd : PD Nat) (bdry : Nat × Nat) : PD Nat × Nat × Nat
       pd := pd.push <| .Xp (i+1) (i+1) (i+2) i
     i := i + 2
   return (pd, bdry.1, i)
+
+def PD.plan (pd : PD Nat) (start : Nat) : PD Nat := Id.run do
+  let mut pd := pd
+  let mut new_pd : PD Nat := #[]
+  let mut frontier := #[start]
+  -- cardinality of multiset intersection
+  let score (as bs : Array Nat) : Nat :=
+    let as := as.insertionSort (· < ·)
+    let bs := bs.insertionSort (· < ·)
+    let aux (n : Nat) : Merge Nat → Nat
+      | Merge.both _ _ => n + 1
+      | _ => n
+    Array.mergeBy id aux 0 as bs
+  -- multiset symmetric difference
+  let update (frontier bs : Array Nat) : Array Nat :=
+    let bs := bs.insertionSort (· < ·)
+    let aux (frontier' : Array Nat) : Merge Nat → Array Nat
+    | Merge.both _ _ => frontier'
+    | Merge.left x => frontier'.push x
+    | Merge.right x => frontier'.push x
+    Array.mergeBy id aux #[] frontier bs
+  for i in [0 : pd.size] do
+    -- locate best candidate
+    let pd' := pd.map (λ node => (score frontier node.ids.toArray, node))
+    pd := pd'.insertionSort (λ x y => x.1 < y.1) |>.map Prod.snd
+    let best := pd.back
+    frontier := update frontier best.ids.toArray
+    new_pd := new_pd.push best
+    pd := pd.pop
+  return new_pd
+
+--#eval toString <| PD.plan #[Node.Xp 4 2 5 1, Node.Xp 2 6 3 5, Node.Xp 0 4 1 3] 0

@@ -315,23 +315,82 @@ def ATL.cabled_Xp (n : Nat) : ATL := (PD.cabled_Xp n).toATL
 
 def ATL.cabled_Xm (n : Nat) : ATL := (PD.cabled_Xm n).toATL
 
+def ATL.cabled_P (n : Nat) (a b : Nat) : ATL := Id.run do
+  let mut x : ATL := ATL.one
+  for i in [0 : n] do
+    x := x * ATLP.mk' (n*a + i) (n*b + i) 0
+  return x
+
 --#eval toString <| ATL.cabled_Xp 2
 --#eval (ATL.cabled_Xp 4).diagrams.size -- 1252
 
 structure ATLCache where
   cached_xp : Array ATL
   cached_xm : Array ATL
+  cached_pos_twist : Array (Array ATL)
+  cached_neg_twist : Array (Array ATL)
 deriving Repr
 
 def ATLCache.empty : ATLCache where
   cached_xp := #[]
   cached_xm := #[]
+  cached_pos_twist := #[]
+  cached_neg_twist := #[]
+
+/-- Given an `ATL.cabled_Xp n` or `ATL.cabled_Xm n`, relabel it.
+
+The indices are all multiplied by `n` to make space for all the intermediate indices. -/
+def ATL.cabled_crossing_relabel (x : ATL) (n : Nat) (a b c d : Nat) : ATL :=
+  x.relabel <| λ i =>
+    if i < n then n*a + i
+    else if i < 2*n then n*b + i - n
+    else if i < 3*n then n*c + i - 2*n
+    else n*d + i - 3*n
+
+def ATL.path_relabel (x : ATL) (n : Nat) (a b : Nat) : ATL :=
+  x.relabel <| λ i =>
+    if i < n then n*a + i
+    else n*b + i - n
 
 def ATLCache.ensure_xp (cache : ATLCache) (n : Nat) : ATLCache := Id.run do
   let mut cache := cache
   for n' in [cache.cached_xp.size : n + 1] do
     cache := { cache with cached_xp := cache.cached_xp.push (ATL.cabled_Xp n') }
   return cache
+
+def ATLCache.ensure_xm (cache : ATLCache) (n : Nat) : ATLCache := Id.run do
+  let mut cache := cache
+  for n' in [cache.cached_xm.size : n + 1] do
+    cache := { cache with cached_xm := cache.cached_xm.push (ATL.cabled_Xm n') }
+  return cache
+
+def ATLCache.ensure_pos_twist (cache : ATLCache) (n : Nat) (wr : Nat) : ATLCache := Id.run do
+  let cache := cache.ensure_xp n
+  let mut pcache := cache.cached_pos_twist
+  for n' in [pcache.size : n + 1] do
+    pcache := pcache.push #[ATL.cabled_P n' 0 1,
+                            cache.cached_xp[n'].cabled_crossing_relabel n' 2 2 1 0]
+  let mut pcachen := pcache[n]
+  for wr' in [pcachen.size : wr + 1] do
+    let a1 := pcachen[wr'-1].path_relabel n 0 2
+    let a2 := pcachen[1].path_relabel n 2 1
+    pcachen := pcachen.push <| a1 * a2
+  return { cache with cached_pos_twist := pcache.set! n pcachen }
+
+def ATLCache.ensure_neg_twist (cache : ATLCache) (n : Nat) (wr : Nat) : ATLCache := Id.run do
+  let cache := cache.ensure_xm n
+  let mut mcache := cache.cached_neg_twist
+  for n' in [mcache.size : n + 1] do
+    mcache := mcache.push #[ATL.cabled_P n' 0 1,
+                            cache.cached_xm[n'].cabled_crossing_relabel n' 0 2 2 1]
+  let mut mcachen := mcache[n]
+  for wr' in [mcachen.size : wr + 1] do
+    let a1 := mcachen[wr'-1].path_relabel n 0 2
+    let a2 := mcachen[1].path_relabel n 2 1
+    mcachen := mcachen.push <| a1 * a2
+  return { cache with cached_neg_twist := mcache.set! n mcachen }
+
+--#eval ATLCache.empty.ensure_pos_twist 1 4
 
 /--
 Create cabled positive crossing using indices.
@@ -340,33 +399,25 @@ The indices are all multiplied by `4 * n` to make space for all the intermediate
 -/
 def ATLCache.Xp (cache : ATLCache) (n : Nat) (a b c d : Nat) : ATLCache × ATL :=
   let cache := cache.ensure_xp n
-  let x := cache.cached_xp[n].relabel <| λ i =>
-    if i < n then n*a + i
-    else if i < 2*n then n*b + i - n
-    else if i < 3*n then n*c + i - 2*n
-    else n*d + i - 3*n
+  let x := cache.cached_xp[n].cabled_crossing_relabel n a b c d
   (cache, x)
-
-def ATLCache.ensure_xm (cache : ATLCache) (n : Nat) : ATLCache := Id.run do
-  let mut cache := cache
-  for n' in [cache.cached_xm.size : n + 1] do
-    cache := { cache with cached_xm := cache.cached_xm.push (ATL.cabled_Xm n') }
-  return cache
 
 def ATLCache.Xm (cache : ATLCache) (n : Nat) (a b c d : Nat) : ATLCache × ATL :=
   let cache := cache.ensure_xm n
-  let x := cache.cached_xm[n].relabel <| λ i =>
-    if i < n then n*a + i
-    else if i < 2*n then n*b + i - n
-    else if i < 3*n then n*c + i - 2*n
-    else n*d + i - 3*n
+  let x := cache.cached_xm[n].cabled_crossing_relabel n a b c d
   (cache, x)
 
-def ATL.cabled_P (n : Nat) (a b : Nat) : ATL := Id.run do
-  let mut x : ATL := ATL.one
-  for i in [0 : n] do
-    x := x * ATLP.mk' (n*a + i) (n*b + i) 0
-  return x
+def ATLCache.twist (cache : ATLCache) (n : Nat) (wr : Int) (a b : Nat) : ATLCache × ATL :=
+  if wr ≥ 0 then
+    let cache := cache.ensure_pos_twist n wr.natAbs
+    let y := cache.cached_pos_twist[n][wr.natAbs].path_relabel n a b
+    (cache, y)
+  else
+    let cache := cache.ensure_neg_twist n wr.natAbs
+    let y := cache.cached_neg_twist[n][wr.natAbs].path_relabel n a b
+    (cache, y)
+
+--#eval toString <| (ATLCache.empty.twist 3 (6) 0 1).2
 
 def ATLCache.ofNode (cache : ATLCache) (n : Nat) : Node Nat → ATLCache × ATL
 | .Xp a b c d => cache.Xp n a b c d
@@ -384,7 +435,7 @@ def ATL.finalize (a : ATL) : Poly := Id.run do
     if d.paths.size = 1 then
       p := p + d.coeff * Poly.K (d.paths[0].whiskers.natAbs / 2)
     else
-      panic! "ATL.finalize: internal error"
+      p := panic! "ATL.finalize: internal error"
   return p
 
 def arrow_poly (p : PD Nat) : Poly :=
@@ -395,14 +446,21 @@ def ATLCache.cabled_arrow_poly (cache : ATLCache) (n : Nat) (pd : PD Nat) (bdry 
 do
   let mut cache := cache
   let mut a : ATL := ATL.one
+  let pd := pd.plan bdry.1
+  --let (pd, bdry) := pd.writhe_normalize bdry
+  --let j := bdry.2
+  let j := pd.max_id + 1
   -- Connect all but one back up
   for i in [1 : n] do
-    a := a * ATLP.mk' (n*bdry.2 + i) (n*bdry.1 + i) 0
+    a := a * ATLP.mk' (n*j + i) (n*bdry.1 + i) 0
   -- Process nodes
   for node in (id pd : Array _) do
     let (cache', node') := cache.ofNode n node
     cache := cache'
     a := a * node'
+  let (cache', wr_node) := cache.twist n (-pd.writhe) bdry.2 j
+  cache := cache'
+  a := a * wr_node
   return (cache, a.finalize)
 
 --#eval ATLCache.empty.cabled_arrow_poly
@@ -418,3 +476,6 @@ do
 
 #eval toString <| ATL.finalize <| ATL.Xp 8 4 7 5 * ATL.Xp 4 0 3 1 * ATL.Xp 2 6 1 7 * ATL.Xp 6 2 5 3
 -/
+
+--#eval toString <| Prod.snd <|
+--  ATLCache.empty.cabled_arrow_poly 3 #[Node.Xp 0 4 1 3, Node.Xp 4 2 5 1, Node.Xp 2 6 3 5] (0, 6)

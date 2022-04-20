@@ -15,7 +15,7 @@ def calculate_knot (cache : ATLCache) (num : Nat) (name : String) (pd : PD Nat) 
   ATLCache × knot_data :=
 Id.run do
   let mut cache := cache
-  let (pd, bdry) := pd.writhe_normalize bdry
+  --let (pd, bdry) := pd.writhe_normalize bdry
   let mut polys : Array Poly := #[]
   for n in [1:4] do
     let (cache', p) := cache.cabled_arrow_poly n pd bdry
