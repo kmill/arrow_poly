@@ -4,3 +4,10 @@ Did 0-5 crossings, arrow polynomials up to third cabling
 
 (used 12 threads, implementation didn't do anything special with
 planning composition beyond pre-computing cabled crossings)
+
+With additional caching of writhe corrections, and also with a planner.
+
+./build/bin/arrow_poly data/knots-6.txt  257081.38s user 1302.07s system 1097% cpu 6:32:18.53 total
+
+With a better planner, about the same amount of time (I was using the computer, too).
+./build/bin/arrow_poly data/knots-6.txt  263304.96s user 1573.04s system 1106% cpu 6:38:58.96 total

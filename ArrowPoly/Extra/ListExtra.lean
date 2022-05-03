@@ -1,5 +1,12 @@
 import ArrowPoly.Extra.NatExtra
 
+theorem List.concat_append :
+  ys.concat x ++ xs = ys ++ x :: xs :=
+by
+  induction ys with
+  | nil => rfl
+  | cons y ys ih => simp [concat, ih]
+
 theorem List.concat_cons (x : α) (xs : List α) (y : α) :
   (x :: xs).concat y = x :: xs.concat y := rfl
 
@@ -80,3 +87,85 @@ def List.count [DecidableEq α] : List α → α → Nat
 inductive List.nodup : List α → Prop
 | nil : nodup []
 | cons (x : α) (xs : List α) (h : ¬ x ∈ xs) : nodup (x :: xs)
+
+@[simp]
+theorem List.length_drop (n : Nat) (xs : List α) : (xs.drop n).length = xs.length - n :=
+by
+  induction n generalizing xs with
+  | zero => rfl
+  | succ n ih =>
+    cases xs with
+    | nil => simp [List.drop]
+    | cons x xs => simp [List.drop, Nat.succ_sub_succ, ih]
+
+@[simp]
+theorem List.drop_nil (n : Nat) : ([] : List α).drop n = [] :=
+by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp [drop, ih]
+
+theorem List.drop_eq_nil_of_le (n : Nat) (xs : List α) (h : xs.length ≤ n) : xs.drop n = [] :=
+by
+  induction xs generalizing n with
+  | nil => simp
+  | cons x xs ih =>
+    cases n with
+    | zero =>
+      simp at h
+    | succ n =>
+      simp at h
+      simp [drop, ih, h]
+
+theorem List.get_drop (xs : List α) (m n : Nat) (h h') :
+  (xs.drop m).get ⟨n, h⟩ = xs.get ⟨m + n, h'⟩ :=
+by
+  induction xs generalizing m n with
+  | nil =>
+    simp at h
+    exact (Nat.not_lt_zero _ h).elim
+  | cons x xs ih =>
+    cases m with
+    | zero => simp [drop]; rfl
+    | succ m =>
+      simp [drop, Nat.succ_add, get]
+      rw [ih]
+
+theorem List.drop_drop (xs : List α) (m n : Nat) :
+  (xs.drop m).drop n = xs.drop (n + m) :=
+by
+  induction xs generalizing m n with
+  | nil =>
+    simp
+  | cons x xs ih =>
+    cases m with
+    | zero => simp [drop]
+    | succ m => simp [drop, ih]
+
+theorem List.map_concat (xs : List α) (x : α) (f : α → β) :
+  (xs.concat x).map f = (xs.map f).concat (f x) :=
+by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih => simp [concat, map, ih]
+
+theorem List.foldlM_concat_Id {α : Type u} {β : Type v}
+  (f : β → α → Id β) (init : β) (xs : List α) (x : α) :
+  (xs.concat x).foldlM f init = (do let b ← xs.foldlM f init; f b x) :=
+by
+  induction xs generalizing init with
+  | nil => rfl
+  | cons x xs ih => simp [concat, List.foldlM, ih]
+
+theorem List.get_map (xs : List α) (f : α → β) (i : Nat) (h) :
+  (xs.map f).get ⟨i, h⟩ = f (xs.get ⟨i, by { simp at h; exact h }⟩) :=
+by
+  induction xs generalizing i with
+  | nil =>
+    simp at h
+    exact (Nat.not_lt_zero _ h).elim
+  | cons x xs ih =>
+    cases i
+    · rfl
+    · simp [map, get, ih]
+      rfl

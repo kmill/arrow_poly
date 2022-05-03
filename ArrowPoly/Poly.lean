@@ -112,7 +112,23 @@ instance : Sub Poly where
 
 def Poly.mulScalar (p : Poly) (c : Int) (hc : c ≠ 0) : Poly where
   terms := p.terms.map (λ m => m.scale c hc)
-  incr := sorry
+  incr := by
+    intro i j hij
+    cases i with | mk i hi =>
+    cases j with | mk j hj =>
+    rw [Array.get_map, Array.get_map, Array.get_map, Array.get_map]
+    · have := p.incr ⟨i, by { simp at hi; simp [hi] }⟩ ⟨j, by { simp at hj; simp [hj] }⟩
+      simp at this
+      specialize this hij
+      rw [Array.get_map, Array.get_map] at this
+      · simp [Monomial.scale, this]
+      · simp at hj
+        exact hj
+      · simp at hi
+        exact hi
+    all_goals
+      simp at hi hj
+      simp [hi, hj]
 
 instance : HMul Int Poly Poly where
   hMul c p := if h : c = 0 then Poly.zero else p.mulScalar c h

@@ -2,6 +2,98 @@ import ArrowPoly.Extra.NatExtra
 import ArrowPoly.Extra.ListExtra
 import ArrowPoly.Extra.LogicExtra
 
+theorem List.toArrayAux_eq (xs ys : List α) :
+  xs.toArrayAux (Array.mk ys) = Array.mk (ys ++ xs) :=
+by
+  induction xs generalizing ys with
+  | nil => simp [toArrayAux]
+  | cons x xs ih =>
+    simp [toArrayAux]
+    rw [ih]
+    simp [Array.push, List.concat_append]
+
+@[simp]
+theorem List.toArray_eq (xs : List α) : xs.toArray = Array.mk xs :=
+by
+  induction xs using List.concat_ind with
+  | nil => rfl
+  | concat xs x ih =>
+    simp [toArray, toArrayAux, Array.mkEmpty, List.toArrayAux_eq]
+
+theorem Array.foldlM.loop_step {α : Type u} {β : Type v} {m : Type v → Type w} [Monad m]
+  (f : β → α → m β) (xs : List α) (b : β) (i j : Nat) :
+  Array.foldlM.loop f (Array.mk xs) xs.length (by simp) i j b
+  = Array.foldlM.loop f (Array.mk (xs.drop j)) (xs.length - j) (by simp [size]) i 0 b :=
+by
+  induction i generalizing xs j b with
+  | zero =>
+    unfold loop
+    simp
+    split <;> split <;> simp
+  | succ i ih =>
+    rw [loop]
+    simp
+    split
+    · simp [ih]
+      rw [loop]
+      simp
+      split
+      · simp [get, List.get]
+        rw [List.get_drop]
+        have := λ b => ih (List.drop j xs) b 1
+        simp at this
+        simp [this, List.drop_drop, Nat.add_comm 1 j]
+        rfl
+        simp [*]
+      · rename_i h₁ h₂
+        simp [Nat.not_lt, Nat.sub_eq_zero_iff] at h₂
+        have := Nat.lt_of_lt_of_le h₁ h₂
+        exact (Nat.lt_irrefl _ this).elim
+    · rw [loop]
+      simp
+      split
+      · apply False.elim
+        rename_i h₁ h₂
+        rw [Nat.not_lt] at h₁
+        rw [Nat.zero_lt_sub_iff] at h₂
+        have := Nat.lt_of_lt_of_le h₂ h₁
+        exact (Nat.lt_irrefl _ this).elim
+      · rfl
+
+theorem Array.foldlM_eq {α : Type u} {β : Type v} {m : Type v → Type w} [Monad m]
+  (f : β → α → m β) (init : β) (xs : List α) :
+  (Array.mk xs).foldlM f init = xs.foldlM f init :=
+by
+  unfold foldlM
+  simp
+  simp [List.drop]
+  induction xs generalizing init with
+  | nil => rfl
+  | cons x xs ih =>
+    unfold foldlM.loop
+    unfold List.foldlM
+    simp [Array.foldlM.loop_step, get, List.get]
+    apply congrArg
+    apply funext
+    intro b
+    have := Array.foldlM.loop_step f (x :: xs) b (List.length xs) 1
+    simp at this
+    rw [this]
+    simp [List.drop]
+    apply ih
+
+theorem Array.map_eq (xs : List α) (f : α → β) :
+  (Array.mk xs).map f = Array.mk (xs.map f) :=
+by
+  simp [map, mapM, Array.foldlM_eq, mkEmpty, push]
+  induction xs using List.concat_ind with
+  | nil => rfl
+  | concat xs x ih =>
+    rw [List.foldlM_concat_Id]
+    simp [List.map_concat, Id.run]
+    simp [Id.run] at ih
+    rw [ih]
+
 theorem Array.back_eq_of_back?_eq [Inhabited α] {a : Array α} (h : a.back? = some x) :
   a.back = x :=
 by
@@ -164,22 +256,50 @@ theorem Array.get_push_last (as : Array α) (a : α) :
   (as.push a).get ⟨as.size, by { simp; apply Nat.lt_succ_self }⟩ = a :=
 by simp [get, push]
 
-/-
 @[simp] theorem Array.size_map (as : Array α) (f : α → β) :
   (as.map f).size = as.size :=
 by
   cases as with | mk xs =>
-  simp [size, map, Id.run, mapM, foldlM, push, get, mkEmpty]
-  induction xs using List.concat_ind with
-  | nil => rfl
-  | concat xs x ih =>
-    simp
-    rw [foldlM.loop]
-    simp [Nat.zero_lt_succ]
-    simp [← Nat.succ_eq_add_one]
--/
+  simp [Array.map_eq]
 
---theorem Array.map_get 
+theorem Array.getOp_map [Inhabited α] [Inhabited β] (as : Array α) (f : α → β) (i : Nat)
+  (h : f default = default) :
+  (as.map f)[i] = f as[i] :=
+by
+  cases as with | mk lst =>
+  generalize ha : map f (Array.mk lst) = x
+  rw [map_eq] at ha
+  subst x
+  simp [getOp, get!, getD, size, get]
+  split
+  · simp [List.get_map]
+  · simp [h]
+
+theorem Array.get_map (as : Array α) (f : α → β) (i : Nat) {h h'} :
+  (as.map f).get ⟨i, h⟩ = f (as.get ⟨i, h'⟩) :=
+by
+  generalize h : map f as = x, h' : Fin.mk i h = y
+  cases as with | mk lst =>
+  rw [map_eq] at h
+  subst h
+  simp [get]
+  rw [List.get_map]
+  apply congrArg
+  apply congrArg
+  simp
+  cases y
+  simp
+  rename_i a b c
+  generalize hm : size (map f (Array.mk lst)) = m
+  generalize hn : size (Array.mk (lst.map f)) = n
+  have : HEq (⟨i, by { subst hm; exact h }⟩ : Fin m) (⟨b, by { subst hn; exact c }⟩ : Fin n) := by
+    subst hm hn
+    exact h'
+  simp [size] at hm
+  simp at hn
+  subst hm hn
+  cases this
+  rfl
 
 section strict_increasing
 variable [LT α]

@@ -94,14 +94,6 @@ def PD.plan (pd : PD Nat) (start : Nat) : PD Nat := Id.run do
   let mut pd := pd
   let mut new_pd : PD Nat := #[]
   let mut frontier := #[start]
-  -- cardinality of multiset intersection
-  let score (as bs : Array Nat) : Nat :=
-    let as := as.insertionSort (· < ·)
-    let bs := bs.insertionSort (· < ·)
-    let aux (n : Nat) : Merge Nat → Nat
-      | Merge.both _ _ => n + 1
-      | _ => n
-    Array.mergeBy id aux 0 as bs
   -- multiset symmetric difference
   let update (frontier bs : Array Nat) : Array Nat :=
     let bs := bs.insertionSort (· < ·)
@@ -111,13 +103,13 @@ def PD.plan (pd : PD Nat) (start : Nat) : PD Nat := Id.run do
     | Merge.right x => frontier'.push x
     Array.mergeBy id aux #[] frontier bs
   for i in [0 : pd.size] do
-    -- locate best candidate
-    let pd' := pd.map (λ node => (score frontier node.ids.toArray, node))
-    pd := pd'.insertionSort (λ x y => x.1 < y.1) |>.map Prod.snd
-    let best := pd.back
-    frontier := update frontier best.ids.toArray
+    -- locate best candidate (smallest frontier)
+    let pd' := pd.map (λ node => (update frontier node.ids.toArray, node))
+      |>.insertionSort (λ x y => x.1.size > y.1.size)
+    let (frontier', best) := pd'.back
+    frontier := frontier'
+    pd := pd'.pop.map Prod.snd
     new_pd := new_pd.push best
-    pd := pd.pop
   return new_pd
 
 --#eval toString <| PD.plan #[Node.Xp 4 2 5 1, Node.Xp 2 6 3 5, Node.Xp 0 4 1 3] 0
