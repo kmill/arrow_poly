@@ -99,10 +99,11 @@ theorem Array.back_eq_of_back?_eq [Inhabited α] {a : Array α} (h : a.back? = s
 by
   simp [back?, get?, get] at h
   split at h
-  · rename_i h'
+  next h' =>
     cases h
     simp [back, get!, getD, h', get]
-  · cases h
+  next =>
+    cases h
 
 
 /-- Pop off trailing zeros -/
@@ -129,12 +130,12 @@ theorem Array.back?_popZeros (a : Array Int) : a.popZeros.back? ≠ some 0 := by
   rw [popZeros]
   simp []
   split
-  · rename_i h
+  next h =>
     simp [isEmpty] at h
     cases h with
     | inl h => simp [Array.back?_eq_of_size_eq_zero _ h]
     | inr h => exact Array.back_eq_of_back?_eq.mt h
-  · rename_i h
+  next h =>
     have : size a - 1 < size a := by
       simp [not_or, isEmpty] at h
       apply Nat.pred_le_self_of_ne_zero _ h.1
@@ -145,9 +146,9 @@ termination_by _ => a.size
 theorem Array.back?_push (a : Array α) [Inhabited α] (x : α) : (a.push x).back? = some x := by
   simp [back?, push, get?, get]
   split
-  · rename_i h
+  next h =>
     simp [Nat.add_sub_self_right]
-  · rename_i h
+  next h =>
     apply h
     simp [Nat.add_sub_self_right]
     apply Nat.lt_succ_self
@@ -167,10 +168,10 @@ termination_by _ => max as.size bs.size - i
 /-- Like `Array.zipWith`, but extend the arrays with `default` so they match lengths. -/
 @[inline] def Array.zipWith' [Inhabited α] [Inhabited β]
   (as : Array α) (bs : Array β) (f : α → β → γ) : Array γ :=
-  zipWith'Aux f as bs 0 #[]
+  zipWith'Aux f as bs 0 (Array.mkEmpty <| max as.size bs.size)
 
 @[specialize] def Array.lexicographicAux [Ord α] [Inhabited α] (as bs : Array α) (i : Nat) : Ordering :=
-  if h : i < max as.size bs.size then
+  if i < max as.size bs.size then
     match compare (as.get!? i default) (bs.get!? i default) with
     | .eq => lexicographicAux as bs (i+1)
     | c => c
@@ -185,7 +186,7 @@ inductive Merge (α : Type _)
 | left (x : α)
 | right (x : α)
 | both (x y : α)
-deriving Repr
+deriving Repr, DecidableEq
 
 section merge
 variable (f : α → β) [Ord β] (g : γ → Merge α → γ) 
@@ -436,7 +437,7 @@ end ind
 
 def Array.enumerate (as : Array α) : Array (Nat × α) :=
 (as.foldl (λ (acc : Nat × Array (Nat × α)) a =>
-  (acc.1 + 1, acc.2.push (acc.1, a))) (0, #[])).2
+  (acc.1 + 1, acc.2.push (acc.1, a))) (0, Array.mkEmpty as.size)).2
 
 @[specialize] private partial def Array.binInsertAux'
     {α : Type u} {m : Type u → Type v} [Monad m] [Inhabited α]

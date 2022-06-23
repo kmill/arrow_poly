@@ -82,7 +82,7 @@ def PD.writhe_normalize (pd : PD Nat) (bdry : Nat × Nat) : PD Nat × Nat × Nat
   let mut pd := pd
   let mut i := bdry.2 -- high
   let wr := pd.writhe
-  for j in [0 : wr.natAbs] do
+  for _ in [0 : wr.natAbs] do
     if wr > 0 then
       pd := pd.push <| .Xm i (i+1) (i+1) (i+2)
     else
@@ -90,6 +90,12 @@ def PD.writhe_normalize (pd : PD Nat) (bdry : Nat × Nat) : PD Nat × Nat × Nat
     i := i + 2
   return (pd, bdry.1, i)
 
+/--
+Sort the PD using the heuristic that the frontier should be minimized.
+
+Idea from http://katlas.org/wiki/The_Jones_Polynomial#How_is_the_Jones_polynomial_computed.3F for
+the Jones polynomial.
+-/
 def PD.plan (pd : PD Nat) (start : Nat) : PD Nat := Id.run do
   let mut pd := pd
   let mut new_pd : PD Nat := #[]
@@ -102,7 +108,7 @@ def PD.plan (pd : PD Nat) (start : Nat) : PD Nat := Id.run do
     | Merge.left x => frontier'.push x
     | Merge.right x => frontier'.push x
     Array.mergeBy id aux #[] frontier bs
-  for i in [0 : pd.size] do
+  for _ in [0 : pd.size] do
     -- locate best candidate (smallest frontier)
     let pd' := pd.map (λ node => (update frontier node.ids.toArray, node))
       |>.insertionSort (λ x y => x.1.size > y.1.size)

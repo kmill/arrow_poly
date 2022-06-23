@@ -86,3 +86,28 @@ by
     cases m with
     | zero => simp [Nat.not_lt]
     | succ m => simp [Nat.succ_sub_succ, ih]
+
+instance Nat.decidable_forall_lt (b : Nat) (p : Nat → Prop) [DecidablePred p] :
+  Decidable (∀ n, n < b → p n) :=
+match b with
+| 0 => isTrue (by simp [Nat.not_lt_zero])
+| b+1 =>
+  match decidable_forall_lt b p with
+  | isTrue h =>
+    if hb : p b then
+      isTrue $ by
+        intros n hn
+        cases Nat.eq_or_lt_of_le (Nat.le_of_lt_succ hn) with
+        | inl hl => cases hl; assumption
+        | inr => apply h; assumption
+    else
+      isFalse $ by
+        intro h
+        apply hb
+        apply h
+        apply Nat.lt_succ_self
+  | isFalse h => isFalse $ by
+      intro h'
+      apply h
+      intros n hn
+      exact h' _ (Nat.le_step hn)

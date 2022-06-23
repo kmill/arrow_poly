@@ -120,6 +120,7 @@ do
 --#eval parseLineOfString "idhv O1-O2-U1-O3+U2-O4-U3+U4-"
 --#eval parseLineOfString "O1-O2-U1-O3+U2-O4-U3+U4-"
 
+/-- Returns an array of knot name, knot PD code, and the pair of boundary indices. -/
 def parseFile (fname : System.FilePath) : IO (Array (String × PD Nat × Nat × Nat)) := do
   let mut line := 1
   let mut crossings := 0

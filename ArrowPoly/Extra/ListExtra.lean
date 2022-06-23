@@ -81,7 +81,7 @@ by
       simp
 
 def List.count [DecidableEq α] : List α → α → Nat
-| [], a => 0
+| [], _ => 0
 | x :: xs, a => (if x == a then 1 else 0) + xs.count a
 
 inductive List.nodup : List α → Prop
@@ -103,7 +103,7 @@ theorem List.drop_nil (n : Nat) : ([] : List α).drop n = [] :=
 by
   induction n with
   | zero => rfl
-  | succ n ih => simp [drop, ih]
+  | succ _ ih => simp [drop, ih]
 
 theorem List.drop_eq_nil_of_le (n : Nat) (xs : List α) (h : xs.length ≤ n) : xs.drop n = [] :=
 by

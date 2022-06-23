@@ -47,7 +47,7 @@ def ATLP.combine (p1 p2 : ATLP) : Option ATLP :=
 
 attribute [local instance] Array.lexicographic
 
-/-- "arrow Templerley-Lieb diagram" -/
+/-- "arrow Temperley-Lieb diagram" -/
 structure ATLD where
   coeff : Poly
   paths : Array ATLP
@@ -126,12 +126,13 @@ def ATLD.concat_aux (d d' : ATLD) : Poly × Array ATLP := Id.run do
   return (q, paths)
 
 def ATLD.concat (d d' : ATLD) : ATLD :=
-  let (q, paths) := ATLD.concat_aux d d'
-  { coeff := q,
-    paths := paths,
-    coeff_nonzero := sorry,
-    ordered := sorry,
-    nodup := sorry }
+  match h : ATLD.concat_aux d d' with
+  | (c, p) =>
+    { coeff := c
+      paths := p,
+      coeff_nonzero := sorry,
+      ordered := sorry,
+      nodup := sorry }
 
 def ATLD.ofArray (paths : Array ATLP) (q : Poly := 1) : ATLD := Id.run do
   let mut q : Poly := q
@@ -178,10 +179,10 @@ def ATL.add (x y : ATL) : ATL :=
     | .right m₂ => p.push m₂
     | .both m₁ m₂ =>
       let q := m₁.coeff + m₂.coeff
-      if h : q = 0 then
+      if h : q.zero? then
         p
       else
-        p.push <| {m₁ with coeff := q, coeff_nonzero := h}
+        p.push <| {m₁ with coeff := q, coeff_nonzero := by { simp [Poly.zero?_iff] at h; exact h } }
   let p := Array.mergeBy ATLD.paths f #[] x.diagrams y.diagrams
   have : (p.map ATLD.paths).strictIncreasing := by
     sorry
@@ -191,10 +192,10 @@ instance : Add ATL where
   add := ATL.add
 
 def ATL.scale (x : ATL) (p : Poly) : ATL :=
-  if hp : p = 0 then
+  if hp : p.zero? then
     ATL.zero
   else
-    { diagrams := x.diagrams.map (λ d => d.scale p hp),
+    { diagrams := x.diagrams.map (λ d => d.scale p (by { simp [Poly.zero?_iff] at hp; exact hp })),
       ordered := sorry }
 
 def ATL.mulDiagram (x : ATL) (d : ATLD) : ATL := Id.run do
@@ -204,10 +205,11 @@ def ATL.mulDiagram (x : ATL) (d : ATLD) : ATL := Id.run do
     diagrams := Id.run <| diagrams.binInsertM' (λ (d1 d2 : ATLD) => d1.paths < d2.paths)
       (merge := fun d'' =>
         let c := d'.coeff + d''.coeff
-        if hc : c = 0 then
+        if hc : c.zero? then
           none
         else
           some { coeff := c,
+                 coeff_nonzero := by { simp [Poly.zero?_iff] at hc; exact hc },
                  paths := d''.paths,
                  ordered := d''.ordered,
                  nodup := d''.nodup })
@@ -217,6 +219,8 @@ def ATL.mulDiagram (x : ATL) (d : ATLD) : ATL := Id.run do
            ordered := sorry }
 
 def ATL.mul (x y : ATL) : ATL := Id.run do
+  -- it's generally better to iterate over the ATL with fewer terms
+  let (x, y) := if x.diagrams.size ≥ y.diagrams.size then (x, y) else (y, x)
   let mut z := ATL.zero
   for d in y.diagrams do
     z := z + x.mulDiagram d
@@ -426,9 +430,11 @@ def ATLCache.ofNode (cache : ATLCache) (n : Nat) : Node Nat → ATLCache × ATL
 
 --#eval toString <| (ATLCache.empty.Xm 2 10 20 30 40).2
 
-/--  -/
---def ATLD.finalize (d : ATLD) : Poly 
-
+/--
+We are calculating arrow polynomials of 1-strand tangles, so this is the step where we finally
+close them up. If we were to close things up before this point, then the polynomial would be
+multiplied by (-A^2 - A^-2), and we're using the standard that the unknot has arrow polynomial 1.
+-/
 def ATL.finalize (a : ATL) : Poly := Id.run do
   let mut p : Poly := 0
   for d in a.diagrams do
@@ -438,9 +444,11 @@ def ATL.finalize (a : ATL) : Poly := Id.run do
       p := panic! "ATL.finalize: internal error"
   return p
 
+/-- Calculate the arrow polynomial. -/
 def arrow_poly (p : PD Nat) : Poly :=
   p.toATL.finalize
 
+/-- Calculate the cabled arrow polynomial. Generalizes `arrow_poly`. -/
 def ATLCache.cabled_arrow_poly (cache : ATLCache) (n : Nat) (pd : PD Nat) (bdry : Nat × Nat) :
   ATLCache × Poly := Id.run
 do

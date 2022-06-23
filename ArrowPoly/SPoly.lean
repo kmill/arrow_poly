@@ -1,45 +1,73 @@
 import ArrowPoly.Extra.ArrayExtra
 import ArrowPoly.Extra.IntExtra
 
-attribute [local instance] Array.lexicographic
+/-! # Single-variable integer polynomials
 
-local instance : LT (Array Int) := ltOfOrd
+See `ArrowPoly.Poly` for multivariable integer polynomials.
 
-structure Monomial where
-  exponents : Array Int
+(Incomplete. Not necessary -- it just ought to be faster for computing Jones polynomials)
+-/
+
+structure SMonomial where
+  exponent : Int
   coeff : Int
   coeff_nonzero : coeff ≠ 0 := by simp [*]
-  exp_norm : exponents.back? ≠ some 0 := by simp [*]
   deriving Repr, Ord
 
-instance : DecidableEq Monomial :=
+instance : DecidableEq SMonomial :=
 λ m1 m2 =>
-  if h : m1.coeff = m2.coeff ∧ m1.exponents = m2.exponents then
+  if h : m1.coeff = m2.coeff ∧ m1.exponent = m2.exponent then
     isTrue (by { cases m1; cases m2; simp [h.1, h.2] })
   else
     isFalse (by { intro h; cases h; simp at h })
 
 /-- compact Mathematica-compatible representation -/
-instance : ToString Monomial where
-  toString m :=
-    toString m.coeff ++ "*M[" ++ ",".intercalate (m.exponents.map toString).toList ++ "]"
+instance : ToString SMonomial where
+  toString m := s!"{m.coeff}*A^{m.exponent}"
 
-instance : Inhabited Monomial := ⟨{ exponents := #[], coeff := 1 }⟩
+instance : Inhabited SMonomial := ⟨{ exponent := 0, coeff := 1 }⟩
 
-structure Poly where
-  terms : Array Monomial
-  incr : (terms.map Monomial.exponents).strictIncreasing
+attribute [local instance] Array.lexicographic
+
+local instance : LT (Array Int) := ltOfOrd
+
+/-- Non-compact representation (see `SPoly` for compact representation). -/
+structure SPoly' where
+  terms : Array SMonomial
+  incr : (terms.map SMonomial.exponent).strictIncreasing
   deriving Repr, Ord
 
-instance : DecidableEq Poly :=
+def SPoly'.data (s : SPoly') : Array Int :=
+  s.terms.foldl (λ d t => d |>.push t.exponent |>.push t.coeff) #[]
+
+/-- Compact representation of an SPoly' using just a single array of integers. -/
+structure SPoly where
+  data : Array Int
+  prop : ∃ (p : SPoly'), data = p.data
+  deriving Repr
+
+def SPoly.to_SPoly' (p : SPoly) : SPoly' where
+  terms := Id.run do
+    let mut terms : Array SMonomial := #[]
+    for i in [0:p.data.size:2] do
+      terms := terms.push ⟨p.data[i], p.data[i+1], sorry⟩
+    return terms
+  incr := by
+    sorry
+
+/-
+
+#eval toString $ SPoly.to_SPoly' ⟨#[1,2,3,4], sorry⟩
+
+instance : DecidableEq SPoly :=
 λ p1 p2 =>
-  if h : p1.terms = p2.terms then
+  if h : p1.data = p2.data then
     isTrue (by { cases p1; cases p2; cases h; simp })
   else
     isFalse (by { intro h; cases h; simp at h })
 
 /-- compact Mathematica-compatible representation -/
-instance : ToString Poly where
+instance : ToString SPoly where
   toString p := "Poly[" ++ ", ".intercalate (p.terms.map toString).toList ++ "]"
 
 @[inline]
@@ -48,15 +76,6 @@ def Poly.zero : Poly where
   incr := by intros i; cases i.isLt
 
 instance : Inhabited Poly := ⟨Poly.zero⟩
-
-def Poly.zero? (p : Poly) : Bool := p.terms.size = 0
-
-theorem Poly.zero?_iff (p : Poly) : p.zero? ↔ p = Poly.zero := by
-  cases p with | mk terms =>
-  cases terms with | mk as =>
-  unfold zero?
-  unfold zero
-  simp [Array.size, List.length_eq_zero_iff]
 
 @[inline]
 def Monomial.incl (n : Int) (hn : n ≠ 0 := by simp) : Monomial where
@@ -70,8 +89,8 @@ def Monomial.scale (m : Monomial) (n : Int) (hn : n ≠ 0) : Monomial where
   coeff_nonzero := by
     intro h
     cases Int.eq_zero_or_eq_zero_of_mul_eq_zero _ _ h
-    · apply hn; assumption
-    · apply m.coeff_nonzero; assumption
+    apply hn; assumption
+    apply m.coeff_nonzero; assumption
   exp_norm := m.exp_norm
 
 @[inline]
@@ -81,8 +100,8 @@ def Monomial.mul (m₁ m₂ : Monomial) : Monomial where
   coeff_nonzero := by
     intro h
     cases Int.eq_zero_or_eq_zero_of_mul_eq_zero _ _ h
-    · apply m₁.coeff_nonzero; assumption
-    · apply m₂.coeff_nonzero; assumption
+    apply m₁.coeff_nonzero; assumption
+    apply m₂.coeff_nonzero; assumption
   exp_norm := Array.back?_popZeros _
 
 def Poly.add (p₁ p₂ : Poly) : Poly :=
@@ -94,8 +113,7 @@ def Poly.add (p₁ p₂ : Poly) : Poly :=
         p
       else
         p.push <| {m₁ with coeff := m₁.coeff + m₂.coeff, coeff_nonzero := h}
-  let p := Array.mergeBy Monomial.exponents f (Array.mkEmpty <| p₁.terms.size + p₂.terms.size)
-            p₁.terms p₂.terms
+  let p := Array.mergeBy Monomial.exponents f #[] p₁.terms p₂.terms
   have : (p.map Monomial.exponents).strictIncreasing := by
     sorry
   ⟨p, this⟩
@@ -112,8 +130,7 @@ def Poly.sub (p₁ p₂ : Poly) : Poly :=
         p
       else
         p.push <| {m₁ with coeff := m₁.coeff - m₂.coeff, coeff_nonzero := h}
-  let p := Array.mergeBy Monomial.exponents f (Array.mkEmpty <| p₁.terms.size + p₂.terms.size)
-            p₁.terms p₂.terms
+  let p := Array.mergeBy Monomial.exponents f #[] p₁.terms p₂.terms
   have : (p.map Monomial.exponents).strictIncreasing := by
     sorry
   ⟨p, this⟩
@@ -142,12 +159,7 @@ def Poly.mulScalar (p : Poly) (c : Int) (hc : c ≠ 0) : Poly where
       simp [hi, hj]
 
 instance : HMul Int Poly Poly where
-  hMul c p :=
-    if h : c = 0
-    then Poly.zero
-    else if c = 1
-    then p
-    else p.mulScalar c h
+  hMul c p := if h : c = 0 then Poly.zero else p.mulScalar c h
 
 instance : Neg Poly where
   neg p := (-1 : Int) * p
@@ -160,8 +172,6 @@ def Poly.mulMonomial (p : Poly) (m : Monomial) : Poly :=
       incr := sorry }
 
 def Poly.mul (p₁ p₂ : Poly) : Poly := Id.run do
-  -- it's generally better to iterate over the shorter polynomial
-  let (p₁, p₂) := if p₁.terms.size ≥ p₂.terms.size then (p₁, p₂) else (p₂, p₁)
   let mut q : Poly := Poly.zero
   for m₂ in p₂.terms do
     q := q + p₁.mulMonomial m₂
@@ -247,14 +257,28 @@ the knot. -/
 def Poly.mirror (p : Poly) : Poly :=
   p.terms.foldl (λ q term => q + term.mirror) 0
 
-/-- Eliminate all K variables, setting them to one. -/
-def Monomial.subst_K_one (m : Monomial) : Monomial where
-  coeff := m.coeff
-  exponents := (m.exponents.shrink 1).popZeros
-  coeff_nonzero := m.coeff_nonzero
-  exp_norm := Array.back?_popZeros _
+/-
+def a : Poly := Monomial.mk #[1, 2] 2
+def b : Poly := Monomial.mk #[3] 3
 
-/-- Eliminate all K variables, setting them to one.
-(Used to convert from arrow polynomial to Kauffman bracket) -/
-def Poly.subst_K_one (p : Poly) : Poly :=
-p.terms.foldl (λ q m => q + m.subst_K_one) 0
+#eval (a * b + b) - ((a + 1) * b)
+#eval (a * b + a) - (a * (b + 1))
+
+#eval Poly.A (-1) * (Poly.K 1 + Poly.K 2) * (Poly.K 1 + Poly.K 2) * Poly.A
+
+#eval Poly.toList ((1 + Poly.A) ^ 6)
+
+#eval (1 : Poly) + 1
+#eval 1 + Poly.A - 1
+#eval Poly.A + 1 - 1
+
+deriving instance Repr for Ordering
+
+#eval compare #[1] #[1,0]
+#eval Poly.A
+#eval Poly.fromList (Poly.A + Poly.A + Poly.K 1).toList
+-/
+
+-- #eval toString <| Poly.A (-1) * (Poly.K 1 + Poly.K 2) * (Poly.K 1 + Poly.K 2) * Poly.A
+
+-/
