@@ -3,7 +3,10 @@ by_jpoly = {}
 
 num_knots = 0
 
-with open("2022-06-23-knots-unoriented.txt") as fin:
+fname = "2022-06-23-knots-unoriented.txt"
+#fname = "out.txt"
+
+with open(fname) as fin:
     for name in fin:
         num_knots += 1
 

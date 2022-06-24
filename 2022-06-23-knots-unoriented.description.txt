@@ -1,3 +1,16 @@
 Did 0-5 crossings, arrow polynomials up to third cabling, 12 threads
 
 ./build/bin/arrow_poly data/knots-6.txt  244688.87s user 800.64s system 1086% cpu 6:16:44.54 total
+
+
+Calculating up to the fourth cabling for two knots, 2 threads:
+
+kmill@verve ~/projects/lean/arrow_poly(master*) % time ./build/bin/arrow_poly data/knots-6.txt -k 5_196 -k 5_1662
+loading data/knots-6.txt
+loaded 92800 knots
+processing 2 knots
+calculated for 5_196
+calculated for 5_1662
+done.
+writing to out.txt
+./build/bin/arrow_poly data/knots-6.txt -k 5_196 -k 5_1662  58288.23s user 49.87s system 149% cpu 10:51:08.81 total
