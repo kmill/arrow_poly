@@ -13,13 +13,14 @@ attribute [local instance] Array.lexicographic
 local instance [Inhabited α] [Ord α] : LT (Array α) := ltOfOrd
 local instance : LT Poly := ltOfOrd
 
-def calculate_knot (cache : ATLCache) (num : Nat) (name : String) (pd : PD Nat) (bdry : Nat × Nat) :
+def calculate_knot (cache : ATLCache)
+  (num : Nat) (name : String) (pd : PD Nat) (bdry : Nat × Nat) (cables : Nat) :
   ATLCache × knot_data :=
 Id.run do
   let mut cache := cache
   --let (pd, bdry) := pd.writhe_normalize bdry
   let mut polys : Array Poly := #[]
-  for n in [1:4] do
+  for n in [1:cables+1] do
     let (cache', p) := cache.cabled_arrow_poly n pd bdry
     polys := polys.push p
     cache := cache'
@@ -33,7 +34,7 @@ Id.run do
   return (cache, { name := name, num := num, polys := polys, polys' := polys', jpolys := jpolys, jpolys' := jpolys' })
 
 def knot_task (data : Array (String × PD Nat × Nat × Nat))
-  (max_crossings : Nat)
+  (max_crossings : Nat) (cables : Nat)
   (nthreads : Nat) (thread : Nat) :
   IO (Array knot_data) :=
 do
@@ -42,7 +43,7 @@ do
   for i in [thread : data.size : nthreads] do
     let (name, pd, bdry) := data[i]
     if pd.crossings > max_crossings then break
-    let (cache', knot) := calculate_knot cache i name pd bdry
+    let (cache', knot) := calculate_knot cache i name pd bdry cables
     cache := cache'
     res := res.push knot
     IO.println s!"calculated for {knot.name}"
@@ -53,6 +54,7 @@ structure CalcOptions where
   num_threads : Nat := 12
   max_crossings : Nat := 5
   only_knots : Option (Array String) := none
+  cables : Nat := 4
 
 def CalcOptions.parse (opts : CalcOptions := {}) : List String → IO CalcOptions
 | [] => return opts
@@ -81,7 +83,7 @@ def main (args : List String) : IO Unit := do
   let nthreads := opts.num_threads
   let mut tasks := #[]
   for thread in [0 : nthreads] do
-    tasks := tasks.push (← IO.asTask (knot_task knots opts.max_crossings nthreads thread))
+    tasks := tasks.push (← IO.asTask (knot_task knots opts.max_crossings opts.cables nthreads thread))
   let mut res := #[]
   for t in tasks do
     let res' ← IO.ofExcept (← IO.wait t)
