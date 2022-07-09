@@ -2,7 +2,9 @@
 
 This is a program written in [Lean 4](https://github.com/leanprover/lean4) to calculate polynomial
 invariants of virtual knots, in particular the cabled arrow polynomials, which are generalizations
-of the cabled virtual Jones polynomials.
+of the cabled virtual Jones polynomials. It was create as part of the work that went toward the paper
+
+> Kyle A. Miller, *The homological arrow polynomial for virtual links*, (2022). [arXiv:2207.02427 [math.GT]](https://arxiv.org/abs/2207.02427)
 
 This program is meant to be reasonably efficient, and it's meant to be independent verification
 of calculations made by Virtual KnotFolio, a version of
@@ -36,5 +38,3 @@ The algorithm is inherently exponential in the number of crossings, with the kth
 polynomial of an n-crossing knot effectively being the arrow polynomial of an n * k^2 crossing knot.
 So, for 4th cabled arrow polynomials of 5-crossing knots we are effectively handling 80-crossing
 knots. This requires some caching of intermediate computations that are reused multiple times.
-
-(Link to paper about arrow polynomials will appear here.)
