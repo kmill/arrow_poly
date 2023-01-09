@@ -4,7 +4,7 @@ This is a program written in [Lean 4](https://github.com/leanprover/lean4) to ca
 invariants of virtual knots, in particular the cabled arrow polynomials, which are generalizations
 of the cabled virtual Jones polynomials. It was create as part of the work that went toward the paper
 
-> Kyle A. Miller, *The homological arrow polynomial for virtual links*, (2022). [arXiv:2207.02427 [math.GT]](https://arxiv.org/abs/2207.02427)
+> Kyle A. Miller, *The homological arrow polynomial for virtual links*, (2022). [arXiv:2207.02427 [math.GT]](https://arxiv.org/abs/2207.02427) https://doi.org/10.1142/S0218216523500050
 
 This program is meant to be reasonably efficient, and it's meant to be independent verification
 of calculations made by Virtual KnotFolio, a version of

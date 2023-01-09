@@ -17,7 +17,7 @@ structure SMonomial where
 instance : DecidableEq SMonomial :=
 λ m1 m2 =>
   if h : m1.coeff = m2.coeff ∧ m1.exponent = m2.exponent then
-    isTrue (by { cases m1; cases m2; simp [h.1, h.2] })
+    isTrue (by { cases m1; cases m2; simp at h; simp [h.1, h.2] })
   else
     isFalse (by { intro h; cases h; simp at h })
 
@@ -50,7 +50,7 @@ def SPoly.to_SPoly' (p : SPoly) : SPoly' where
   terms := Id.run do
     let mut terms : Array SMonomial := #[]
     for i in [0:p.data.size:2] do
-      terms := terms.push ⟨p.data[i], p.data[i+1], sorry⟩
+      terms := terms.push ⟨p.data[i]!, p.data[i+1]!, sorry⟩
     return terms
   incr := by
     sorry

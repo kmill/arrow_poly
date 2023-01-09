@@ -41,7 +41,7 @@ do
   let mut res : Array knot_data := #[]
   let mut cache := ATLCache.empty
   for i in [thread : data.size : nthreads] do
-    let (name, pd, bdry) := data[i]
+    let (name, pd, bdry) := data[i]!
     if pd.crossings > max_crossings then break
     let (cache', knot) := calculate_knot cache i name pd bdry cables
     cache := cache'
@@ -54,7 +54,7 @@ structure CalcOptions where
   num_threads : Nat := 12
   max_crossings : Nat := 5
   only_knots : Option (Array String) := none
-  cables : Nat := 4
+  cables : Nat := 3
 
 def CalcOptions.parse (opts : CalcOptions := {}) : List String → IO CalcOptions
 | [] => return opts

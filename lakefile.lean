@@ -6,7 +6,11 @@ package arrow_poly {
   --moreLeancArgs := #["-UNDEBUG"]
 }
 
-@[defaultTarget]
+lean_lib ArrowPoly {
+  -- add library configuration options here
+}
+
+@[default_target]
 lean_exe arrow_poly {
   root := `Main
 }

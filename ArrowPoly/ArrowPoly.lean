@@ -47,6 +47,9 @@ def ATLP.combine (p1 p2 : ATLP) : Option ATLP :=
 
 attribute [local instance] Array.lexicographic
 
+/-- Lex ordering -/
+instance : LT (Nat × Nat) := ⟨fun p q => p.1 < q.1 ∨ (p.1 = q.1 ∧ p.2 < q.2)⟩
+
 /-- "arrow Temperley-Lieb diagram" -/
 structure ATLD where
   coeff : Poly
@@ -373,11 +376,11 @@ def ATLCache.ensure_pos_twist (cache : ATLCache) (n : Nat) (wr : Nat) : ATLCache
   let mut pcache := cache.cached_pos_twist
   for n' in [pcache.size : n + 1] do
     pcache := pcache.push #[ATL.cabled_P n' 0 1,
-                            cache.cached_xp[n'].cabled_crossing_relabel n' 2 2 1 0]
-  let mut pcachen := pcache[n]
+                            cache.cached_xp[n']!.cabled_crossing_relabel n' 2 2 1 0]
+  let mut pcachen := pcache[n]!
   for wr' in [pcachen.size : wr + 1] do
-    let a1 := pcachen[wr'-1].path_relabel n 0 2
-    let a2 := pcachen[1].path_relabel n 2 1
+    let a1 := pcachen[wr'-1]!.path_relabel n 0 2
+    let a2 := pcachen[1]!.path_relabel n 2 1
     pcachen := pcachen.push <| a1 * a2
   return { cache with cached_pos_twist := pcache.set! n pcachen }
 
@@ -386,11 +389,11 @@ def ATLCache.ensure_neg_twist (cache : ATLCache) (n : Nat) (wr : Nat) : ATLCache
   let mut mcache := cache.cached_neg_twist
   for n' in [mcache.size : n + 1] do
     mcache := mcache.push #[ATL.cabled_P n' 0 1,
-                            cache.cached_xm[n'].cabled_crossing_relabel n' 0 2 2 1]
-  let mut mcachen := mcache[n]
+                            cache.cached_xm[n']!.cabled_crossing_relabel n' 0 2 2 1]
+  let mut mcachen := mcache[n]!
   for wr' in [mcachen.size : wr + 1] do
-    let a1 := mcachen[wr'-1].path_relabel n 0 2
-    let a2 := mcachen[1].path_relabel n 2 1
+    let a1 := mcachen[wr'-1]!.path_relabel n 0 2
+    let a2 := mcachen[1]!.path_relabel n 2 1
     mcachen := mcachen.push <| a1 * a2
   return { cache with cached_neg_twist := mcache.set! n mcachen }
 
@@ -403,22 +406,22 @@ The indices are all multiplied by `4 * n` to make space for all the intermediate
 -/
 def ATLCache.Xp (cache : ATLCache) (n : Nat) (a b c d : Nat) : ATLCache × ATL :=
   let cache := cache.ensure_xp n
-  let x := cache.cached_xp[n].cabled_crossing_relabel n a b c d
+  let x := cache.cached_xp[n]!.cabled_crossing_relabel n a b c d
   (cache, x)
 
 def ATLCache.Xm (cache : ATLCache) (n : Nat) (a b c d : Nat) : ATLCache × ATL :=
   let cache := cache.ensure_xm n
-  let x := cache.cached_xm[n].cabled_crossing_relabel n a b c d
+  let x := cache.cached_xm[n]!.cabled_crossing_relabel n a b c d
   (cache, x)
 
 def ATLCache.twist (cache : ATLCache) (n : Nat) (wr : Int) (a b : Nat) : ATLCache × ATL :=
   if wr ≥ 0 then
     let cache := cache.ensure_pos_twist n wr.natAbs
-    let y := cache.cached_pos_twist[n][wr.natAbs].path_relabel n a b
+    let y := cache.cached_pos_twist[n]![wr.natAbs]!.path_relabel n a b
     (cache, y)
   else
     let cache := cache.ensure_neg_twist n wr.natAbs
-    let y := cache.cached_neg_twist[n][wr.natAbs].path_relabel n a b
+    let y := cache.cached_neg_twist[n]![wr.natAbs]!.path_relabel n a b
     (cache, y)
 
 --#eval toString <| (ATLCache.empty.twist 3 (6) 0 1).2
@@ -439,7 +442,7 @@ def ATL.finalize (a : ATL) : Poly := Id.run do
   let mut p : Poly := 0
   for d in a.diagrams do
     if d.paths.size = 1 then
-      p := p + d.coeff * Poly.K (d.paths[0].whiskers.natAbs / 2)
+      p := p + d.coeff * Poly.K (d.paths[0]!.whiskers.natAbs / 2)
     else
       p := panic! "ATL.finalize: internal error"
   return p

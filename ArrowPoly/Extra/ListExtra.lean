@@ -1,11 +1,9 @@
 import ArrowPoly.Extra.NatExtra
 
-theorem List.concat_append :
-  ys.concat x ++ xs = ys ++ x :: xs :=
-by
-  induction ys with
-  | nil => rfl
-  | cons y ys ih => simp [concat, ih]
+theorem List.concat_append : ys.concat x ++ xs = ys ++ x :: xs :=
+  match ys with
+    | nil => rfl
+    | cons y ys => by simp [concat, concat_append]
 
 theorem List.concat_cons (x : α) (xs : List α) (y : α) :
   (x :: xs).concat y = x :: xs.concat y := rfl
@@ -29,17 +27,14 @@ by
     exact this
 
 theorem List.get_concat (xs : List α) (a : α) (i : Nat) (h : i < xs.length) :
-  (xs.concat a).get ⟨i, by { simp; apply Nat.lt.step h }⟩ = xs.get ⟨i, h⟩ :=
-by
-  induction xs generalizing i with
-  | nil => cases h
-  | cons x xs ih =>
-    cases i with
-    | zero => simp [List.get]
-    | succ i =>
+    (xs.concat a).get ⟨i, by { simp; apply Nat.lt.step h }⟩ = xs.get ⟨i, h⟩ :=
+  match xs, i with
+    | nil, _ => by cases h
+    | cons .., 0 => by simp [List.get]
+    | cons x xs, i + 1 => by
       simp [List.get]
       simp at h
-      exact ih i h
+      exact get_concat _ _ _ h
 
 theorem List.concat_dropLast_eq (xs : List α) (h : xs ≠ []) :
   xs.dropLast.concat (xs.getLast h) = xs :=
@@ -98,24 +93,12 @@ by
     | nil => simp [List.drop]
     | cons x xs => simp [List.drop, Nat.succ_sub_succ, ih]
 
-@[simp]
-theorem List.drop_nil (n : Nat) : ([] : List α).drop n = [] :=
+theorem List.drop_of_length_le {n : Nat} {xs : List α} (h : xs.length ≤ n) : xs.drop n = [] :=
 by
-  induction n with
-  | zero => rfl
-  | succ _ ih => simp [drop, ih]
-
-theorem List.drop_eq_nil_of_le (n : Nat) (xs : List α) (h : xs.length ≤ n) : xs.drop n = [] :=
-by
-  induction xs generalizing n with
-  | nil => simp
-  | cons x xs ih =>
-    cases n with
-    | zero =>
-      simp at h
-    | succ n =>
-      simp at h
-      simp [drop, ih, h]
+  rw [← Nat.sub_eq_zero_iff] at h
+  have := xs.length_drop n
+  rw [h, List.length_eq_zero_iff] at this
+  assumption
 
 theorem List.get_drop (xs : List α) (m n : Nat) (h h') :
   (xs.drop m).get ⟨n, h⟩ = xs.get ⟨m + n, h'⟩ :=
@@ -126,7 +109,7 @@ by
     exact (Nat.not_lt_zero _ h).elim
   | cons x xs ih =>
     cases m with
-    | zero => simp [drop]; rfl
+    | zero => simp [drop]
     | succ m =>
       simp [drop, Nat.succ_add, get]
       rw [ih]
@@ -168,4 +151,3 @@ by
     cases i
     · rfl
     · simp [map, get, ih]
-      rfl

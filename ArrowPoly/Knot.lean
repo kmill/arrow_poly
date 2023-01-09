@@ -51,6 +51,10 @@ instance [ToString α] : ToString (Node α) where
 Each index should appear at most twice. -/
 def PD α := Array (Node α)
 
+/-- Copy instance from `Array` -/
+instance : GetElem (PD α) Nat (Node α) fun xs i => LT.lt i xs.size :=
+  instGetElemArrayNatLtInstLTNatSize
+
 def PD.is_valid [DecidableEq α] (pd : PD α) : Prop := ∀ x, pd.toList.count x ≤ 2
 
 instance : Inhabited (PD α) := ⟨#[]⟩
@@ -59,7 +63,7 @@ instance : Inhabited (PD α) := ⟨#[]⟩
 def PD.crossings [Inhabited α] (pd : PD α) : Nat := Id.run do
   let mut c := 0
   for i in [:pd.size] do
-    match pd[i] with
+    match pd[i]! with
     | .Xp _ _ _ _ => c := c + 1
     | .Xm _ _ _ _ => c := c + 1
     | .P _ _ => pure ()

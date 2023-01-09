@@ -15,7 +15,7 @@ structure Monomial where
 instance : DecidableEq Monomial :=
 λ m1 m2 =>
   if h : m1.coeff = m2.coeff ∧ m1.exponents = m2.exponents then
-    isTrue (by { cases m1; cases m2; simp [h.1, h.2] })
+    isTrue (by { cases m1; cases m2; simp at h; simp [h.1, h.2] })
   else
     isFalse (by { intro h; cases h; simp at h })
 
@@ -229,9 +229,12 @@ def Poly.K (i : Nat) (exp : Nat := 1) : Poly :=
 def Monomial.mirror (m : Monomial) : Monomial where
   coeff := m.coeff
   exponents :=
-    if m.exponents.isEmpty then
+    if h : m.exponents.isEmpty then
       m.exponents
     else
+      have : 0 < m.exponents.size := by
+        simp [Array.isEmpty] at h
+        exact Nat.zero_lt_of_ne_zero h
       m.exponents.set! 0 (-m.exponents[0])
   coeff_nonzero := m.coeff_nonzero
   exp_norm := by

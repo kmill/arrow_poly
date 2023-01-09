@@ -1,12 +1,8 @@
-theorem Nat.eq_zero_or_eq_zero_of_mul_eq_zero : (a b : Nat) → a * b = 0 → a = 0 ∨ b = 0
-| 0, 0, h => by simp
-| (m+1), 0, h => by simp
-| 0, (n+1), h => by simp
-| (m+1), (n+1), h => by cases h
+theorem Nat.eq_zero_or_eq_zero_of_mul_eq_zero (a b : Nat) (h : a * b = 0) : a = 0 ∨ b = 0 := by
+  cases a <;> cases b <;> simp <;> try cases h
 
 @[simp]
-theorem Int.ofNat_eq_zero : (n : Nat) → Int.ofNat n = 0 ↔ n = 0 := by
-  intro n
+theorem Int.ofNat_eq_zero (n : Nat) : Int.ofNat n = 0 ↔ n = 0 := by
   apply Iff.intro
   repeat intro h; cases h; rfl
 

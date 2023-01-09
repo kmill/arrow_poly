@@ -1,7 +1,7 @@
 import ArrowPoly.Knot
 import ArrowPoly.Extra.ArrayExtra
 import Lean.Data.Parsec
-import Std.Data.AssocList
+import Lean.Data.AssocList
 
 /-! # Loading knots from Gauss codes
 
@@ -83,7 +83,7 @@ do
   if code.isEmpty then
     return some (#[Node.P 0 1], 0, 1)
   let mut other_idx : Array Nat := .mkArray code.size 0
-  let mut label_idxs : Std.AssocList α Nat := .empty
+  let mut label_idxs : Lean.AssocList α Nat := .empty
   let mut complete_labels : Array α := #[]
   for (i, e) in code.enumerate do
     match label_idxs.find? e.label with
@@ -104,10 +104,10 @@ do
   let mut pd : PD Nat := #[]
 
   for i in [0 : code.size] do
-    let j := other_idx[i]
+    let j := other_idx[i]!
     if i < j then
-      let entryi := code[i]
-      let entryj := code[j]
+      let entryi := code[i]!
+      let entryj := code[j]!
       match entryi.passing, entryi.crossing_type, entryj.passing, entryj.crossing_type with
       | .Over, .Pos, .Under, .Pos => pd := pd.push <| Node.Xp j (i+1) (j+1) i
       | .Under, .Pos, .Over, .Pos => pd := pd.push <| Node.Xp i (j+1) (i+1) j

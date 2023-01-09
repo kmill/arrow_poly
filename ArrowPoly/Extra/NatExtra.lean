@@ -1,9 +1,6 @@
 import ArrowPoly.Extra.LogicExtra
 
-@[simp] theorem Nat.lt_succ (m : Nat) : 0 < m.succ :=
-by
-  apply Nat.lt_succ_of_le
-  simp
+attribute [simp] Nat.zero_lt_succ
 
 @[simp] theorem Nat.succ_lt_succ_iff (m n : Nat) : m.succ < n.succ ↔ m < n :=
 ⟨Nat.lt_of_succ_lt_succ, Nat.succ_lt_succ⟩
@@ -12,9 +9,9 @@ by
 ⟨Nat.le_of_succ_le_succ, Nat.succ_le_succ⟩
 
 theorem Nat.pred_le_self_of_ne_zero (m : Nat) (h : m ≠ 0) : m - 1 < m :=
-by cases m with
-   | zero => exact (h rfl).elim
-   | succ m => apply Nat.le_refl
+  match m with
+    | zero => (h rfl).elim
+    | succ m => Nat.le_refl (succ m)
 
 theorem Nat.pred_le_self_iff_ne_zero (m : Nat) : m - 1 < m ↔ m ≠ 0 where
   mpr := Nat.pred_le_self_of_ne_zero m

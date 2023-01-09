@@ -21,66 +21,27 @@ by
     simp [toArray, toArrayAux, Array.mkEmpty, List.toArrayAux_eq]
 
 theorem Array.foldlM.loop_step {α : Type u} {β : Type v} {m : Type v → Type w} [Monad m]
-  (f : β → α → m β) (xs : List α) (b : β) (i j : Nat) :
+  (f : β → α → m β) (xs : List α) (i j : Nat) (h : xs.length ≤ i + j) (b : β) :
   Array.foldlM.loop f (Array.mk xs) xs.length (by simp) i j b
-  = Array.foldlM.loop f (Array.mk (xs.drop j)) (xs.length - j) (by simp [size]) i 0 b :=
+  = (xs.drop j).foldlM f b :=
 by
-  induction i generalizing xs j b with
-  | zero =>
-    unfold loop
-    simp
-    split <;> split <;> simp
-  | succ i ih =>
-    rw [loop]
-    simp
-    split
-    · simp [ih]
-      rw [loop]
-      simp
-      split
-      · simp [get, List.get]
-        rw [List.get_drop]
-        have := λ b => ih (List.drop j xs) b 1
-        simp at this
-        simp [this, List.drop_drop, Nat.add_comm 1 j]
-        rfl
-        simp [*]
-      · rename_i h₁ h₂
-        simp [Nat.not_lt, Nat.sub_eq_zero_iff] at h₂
-        have := Nat.lt_of_lt_of_le h₁ h₂
-        exact (Nat.lt_irrefl _ this).elim
-    · rw [loop]
-      simp
-      split
-      · apply False.elim
-        rename_i h₁ h₂
-        rw [Nat.not_lt] at h₁
-        rw [Nat.zero_lt_sub_iff] at h₂
-        have := Nat.lt_of_lt_of_le h₂ h₁
-        exact (Nat.lt_irrefl _ this).elim
-      · rfl
+  unfold foldlM.loop
+  split
+  · split
+    · simp at h
+      cases Nat.not_le_of_gt ‹_› h
+    next h' j' i =>
+      rw [Nat.succ_add] at h
+      simp [foldlM.loop_step f xs i (j + 1) h]
+      simp [← List.get_drop_eq_drop _ _ h']
+      rfl
+  · rw [List.drop_of_length_le]; rfl
+    exact Nat.ge_of_not_lt ‹_›
 
 theorem Array.foldlM_eq {α : Type u} {β : Type v} {m : Type v → Type w} [Monad m]
   (f : β → α → m β) (init : β) (xs : List α) :
   (Array.mk xs).foldlM f init = xs.foldlM f init :=
-by
-  unfold foldlM
-  simp
-  simp [List.drop]
-  induction xs generalizing init with
-  | nil => rfl
-  | cons x xs ih =>
-    unfold foldlM.loop
-    unfold List.foldlM
-    simp [Array.foldlM.loop_step, get, List.get]
-    apply congrArg
-    apply funext
-    intro b
-    have := Array.foldlM.loop_step f (x :: xs) b (List.length xs) 1
-    simp at this
-    rw [this]
-    simp [List.drop]
-    apply ih
+by simp [foldlM, Array.foldlM.loop_step, List.drop]
 
 theorem Array.map_eq (xs : List α) (f : α → β) :
   (Array.mk xs).map f = Array.mk (xs.map f) :=
@@ -102,6 +63,7 @@ by
   next h' =>
     cases h
     simp [back, get!, getD, h', get]
+    rfl
   next =>
     cases h
 
@@ -112,9 +74,8 @@ def Array.popZeros (a : Array Int) : Array Int :=
     a
   else
     have : size a - 1 < size a := by
-      simp [not_or, isEmpty] at h
-      show _ ≤ _
-      simp [h.1, Nat.sub_succ, Nat.succ_pred]
+      simp [not_or, isEmpty, ← Nat.pred_le_self_iff_ne_zero] at h
+      exact h.1
     popZeros a.pop
 termination_by _ => a.size
 
@@ -143,11 +104,14 @@ theorem Array.back?_popZeros (a : Array Int) : a.popZeros.back? ≠ some 0 := by
 termination_by _ => a.size
 
 @[simp]
+theorem Array.size_mk (xs : List α) : (Array.mk xs).size = xs.length := rfl
+
+@[simp]
 theorem Array.back?_push (a : Array α) [Inhabited α] (x : α) : (a.push x).back? = some x := by
-  simp [back?, push, get?, get]
+  simp [back?, push, get?, getElem, get]
   split
   next h =>
-    simp [Nat.add_sub_self_right]
+    simp [Nat.add_sub_cancel]
   next h =>
     apply h
     simp [Nat.add_sub_self_right]
@@ -210,20 +174,20 @@ def Array.mergeByAux (as bs : Array α) (i j : Nat) (cs : γ) : γ :=
     | .lt =>
       have : size as - (i + 1) + (size bs - j) < size as - i + (size bs - j) := by
         apply Nat.add_lt_add_right
-        show _ ≤ _
+        show Nat.succ _ ≤ _
         simp [Nat.sub_succ, Nat.succ_pred, Nat.sub_ne_zero_of_lt h.1]
       mergeByAux as bs (i+1) j <| g cs <| .left (as.get ⟨i, h.1⟩)
     | .eq =>
       have : size as - (i + 1) + (size bs - (j + 1)) < size as - i + (size bs - j) := by
         apply Nat.add_lt_add
         repeat
-          show _ ≤ _
+          show Nat.succ _ ≤ _
           simp [Nat.sub_succ, Nat.succ_pred, Nat.sub_ne_zero_of_lt, h.1, h.2]
       mergeByAux as bs (i+1) (j+1) <| g cs <| .both (as.get ⟨i, h.1⟩) (bs.get ⟨j, h.2⟩)
     | .gt =>
       have : size as - i + (size bs - (j + 1)) < size as - i + (size bs - j) := by
         apply Nat.add_lt_add_left
-        show _ ≤ _
+        show Nat.succ _ ≤ _
         simp [Nat.sub_succ, Nat.succ_pred, Nat.sub_ne_zero_of_lt h.2]
       mergeByAux as bs i (j+1) <| g cs <| .right (bs.get ⟨j, h.2⟩)
   else if i < as.size then
@@ -263,18 +227,19 @@ by
   cases as with | mk xs =>
   simp [Array.map_eq]
 
+
 theorem Array.getOp_map [Inhabited α] [Inhabited β] (as : Array α) (f : α → β) (i : Nat)
   (h : f default = default) :
-  (as.map f)[i] = f as[i] :=
+  (as.map f)[i]! = f as[i]! :=
 by
   cases as with | mk lst =>
   generalize ha : map f (Array.mk lst) = x
   rw [map_eq] at ha
   subst x
-  simp [getOp, get!, getD, size, get]
+  simp [getElem!, getElem, get!, getD, size, get]
   split
   · simp [List.get_map]
-  · simp [h]
+  · exact h.symm
 
 theorem Array.get_map (as : Array α) (f : α → β) (i : Nat) {h h'} :
   (as.map f).get ⟨i, h⟩ = f (as.get ⟨i, h'⟩) :=
@@ -337,16 +302,17 @@ theorem Array.strictIncreasing_push (as : Array α) (a : α) :
     apply And.intro
     · intros i j hij
       specialize h ⟨i, _⟩ ⟨j, _⟩ hij
+      · simp [Nat.lt.step i.isLt]
+      · simp [Nat.lt.step j.isLt]
       · simp [Array.get_push as a j j.isLt] at h
         rw [Array.get_push as a i _] at h
         exact h
-      · simp [Nat.lt.step j.isLt]
     · intro i
       specialize h ⟨i, _⟩ ⟨as.size, _⟩ i.isLt
-      · simp [Array.get_push as a i i.isLt, Array.get_push_last] at h
-        exact h
       · simp [Nat.lt.step i.isLt]
       · simp [Nat.lt_succ_self]
+      · simp [Array.get_push as a i i.isLt, Array.get_push_last] at h
+        exact h
   mpr := by
     intros h i j hij
     cases h with | intro h h' =>
@@ -451,7 +417,7 @@ def Array.enumerate (as : Array α) : Array (Nat × α) :=
     let mid    := (lo + hi)/2
     let midVal := as.get! mid
     if lt midVal k then
-      if mid == lo then do let v ← add (); pure <| as.insertAt (lo+1) v
+      if mid == lo then do let v ← add (); pure <| as.insertAt! (lo+1) v
       else binInsertAux' lt merge add as k mid hi
     else if lt k midVal then
       binInsertAux' lt merge add as k lo mid
