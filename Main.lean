@@ -56,13 +56,38 @@ structure CalcOptions where
   only_knots : Option (Array String) := none
   cables : Nat := 3
 
-def CalcOptions.parse (opts : CalcOptions := {}) : List String → IO CalcOptions
+def optParseString (err : String) : List String → IO (String × List String)
+| s :: args => return (s, args)
+| [] => throw <| IO.userError err
+
+def optParseNat (err : String) : List String → IO (Nat × List String)
+| s :: args =>
+  match s.toNat? with
+  | some n => return (n, args)
+  | none => throw <| IO.userError err
+| [] => throw <| IO.userError err
+
+partial def CalcOptions.parse (opts : CalcOptions := {}) : List String → IO CalcOptions
 | [] => return opts
-| "-k" :: k :: args =>
+| "-k" :: args => do
+  let (k, args) ← optParseString "expecting knot name after -k" args
   let knots := opts.only_knots.getD #[]
   parse {opts with only_knots := knots.push k} args
+| "-j" :: args => do
+  let (n, args) ← optParseNat "expecting non-negative integer after -j" args
+  parse {opts with num_threads := n} args
+| "-n" :: args => do
+  let (n, args) ← optParseNat "expecting non-negative integer after -n" args
+  parse {opts with max_crossings := n} args
+| "-c" :: args => do
+  let (n, args) ← optParseNat "expecting non-negative integer after -c" args
+  parse {opts with cables := n} args
+| "-h" :: _ | "--help" :: _ => do
+  throw <| IO.userError "Usage: arrow_poly [-j num_threads] [-n max_crossings] [-c max_cables] [-k knot_name ... -k knot_name] data/knots-6.txt"
 | fname :: args =>
-  if opts.input_file.isNone then
+  if fname.get? 0 == some '-' then
+    throw <| IO.userError s!"Unknown option {fname}"
+  else if opts.input_file.isNone then
     parse {opts with input_file := fname} args
   else
     throw <| IO.userError "Can only have one knot file."
@@ -72,6 +97,14 @@ def main (args : List String) : IO Unit := do
   let fname ← match opts.input_file with
     | some fname => pure fname
     | none => throw <| IO.userError "Need to give knot file"
+  IO.println "Configuration:"
+  IO.println s!"  input file: {opts.input_file.getD ""}"
+  match opts.only_knots with
+    | some knots => IO.println s!"  only knots: {String.intercalate ", " knots.toList}"
+    | none => pure ()
+  IO.println s!"  number of threads: {opts.num_threads}"
+  IO.println s!"  max. crossings: {opts.max_crossings}"
+  IO.println s!"  max. cables: {opts.cables}"
   IO.println s!"loading {fname}"
   let knots ← parseFile fname
   IO.println s!"loaded {knots.size} knots"
